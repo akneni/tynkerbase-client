@@ -1,0 +1,1 @@
+pub const ACCT_INFO: &str = "./acct-info";
