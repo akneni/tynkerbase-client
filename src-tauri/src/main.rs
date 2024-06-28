@@ -8,6 +8,7 @@ mod api_interface;
 mod api_auth_interface;
 mod constants;
 mod global_state;
+mod config;
 
 use tynkerbase_universal::{
     crypt_utils::{
@@ -17,7 +18,11 @@ use tynkerbase_universal::{
     proj_utils::{self, FileCollection}
 };
 
-use std::fs;
+use std::{
+    fs,
+    path::Path, 
+    process::exit,
+};
 use std::env;
 use std::sync::Mutex;
 use std::io::{self, Write};
@@ -57,11 +62,25 @@ struct Cli {
 enum TopLevelCmds {
     Gui,
     Login,
-    Build { 
-        filename: String, 
-        #[arg(short='O', long="optim", default_value_t = 0)]
-        optimization_level: u8, 
+    CreateAccount {
+        #[arg(long, short)]
+        email: String,
+        #[arg(long, short)]
+        password: String,
     },
+    Deploy,
+    Init {
+        #[arg(short, long)]
+        name: String
+    },
+    ListNodes,
+    AttachNode {
+        #[arg(short, long)]
+        name: String,
+        ip_addr: String,
+    },
+    // #[command(alias="--help")]
+    // Help,
 }
 
 
@@ -75,7 +94,9 @@ fn main() {
 
     match cmds.command {
         TopLevelCmds::Gui => {
-            launch_gui(gstate);
+            println!("A graphical app is coming soon!");
+            return;
+            // launch_gui(gstate);
         },
         TopLevelCmds::Login => {
             let email = prompt("Enter your email: ");
@@ -94,7 +115,93 @@ fn main() {
             gstate.email = Some(email);
             gstate.pass_sha384 = Some(hash_utils::sha384(&pass));
             gstate.tyb_key = Some(key);
-            gstate.save(ACCT_INFO);
+            gstate.save(ACCT_INFO)
+                .unwrap();
+        },
+        TopLevelCmds::CreateAccount { email, password } => {
+            let f = api_auth_interface::create_account(&email, &password);
+            let res = rt.block_on(f);
+            res.unwrap();
+        }
+        TopLevelCmds::Deploy => {
+            let conf = fs::read_to_string(".tynkerbase-config.json").unwrap();
+            let conf: config::Config = serde_json::from_str(&conf).unwrap();
+
+            let mut endpoints = vec![];
+
+            'loop1: for ref n in conf.node_names {
+                for nl in gstate.nodes.iter() {
+                    if n == &nl.name {
+                        endpoints.push(nl.ip_addr.clone().unwrap());
+                        continue 'loop1;
+                    }
+                }
+                println!("WARNING: no upstream node found for {}", &n);
+            }
+
+            let mut handles = vec![];
+            for e in endpoints.iter() {
+                let f = api_interface::transfer_files(e, &conf.proj_name, "./", gstate.tyb_key.as_ref().unwrap());
+                handles.push(f);
+            }
+
+            for h in handles {
+                let res = rt.block_on(h);
+                if let Err(e) = res {
+                    println!("Warning: error pushing changes node {e}");
+                }
+            }
+        }
+        TopLevelCmds::Init {name} => {
+            let conf_path = Path::new(".tynkerbase-config.json");
+            if conf_path.exists() {
+                println!("Current directory is already a project!");
+                exit(1);
+            }
+
+            let mut conf = config::Config::default();
+            conf.proj_name = name;
+            let conf = serde_json::to_string_pretty(&conf)
+                .expect("If you're seeing this error, send out a bug report.");
+
+            fs::write(".tynkerbase-config.json", &conf)
+                .unwrap();
+        },
+        TopLevelCmds::ListNodes => {
+            let mut gstate = gstate.clone();
+
+            let section_width = 30;
+
+            gstate.nodes.push(global_state::Node { name: "oh long johnson".to_string(), ip_addr: None });
+
+            let mega_divider: String = std::iter::repeat('=').take(2*section_width+1).collect();
+            let divider: String = std::iter::repeat('-').take(2*section_width+1).collect();
+
+            println!("|{}|", mega_divider);
+            println!("|{:^section_width$}|{:^section_width$}|\n|{}|", "Node Name", "IPv4 Address", mega_divider);
+
+            for n in gstate.nodes.iter() {
+                println!("|{:^section_width$}|{:^section_width$}|\n|{}|", &n.name, n.ip_addr.as_ref().unwrap_or(&"Unknown".to_string()), divider);
+            }
+        }
+        TopLevelCmds::AttachNode { name, ip_addr } => {
+            let mut node = global_state::Node::default();
+            node.name = name;
+            node.ip_addr = Some(ip_addr.clone());
+
+            let endpoint = format!("https://{}", &ip_addr);
+            let f = api_interface::ping(&endpoint);
+            let res = rt.block_on(f);
+            match res {
+                Ok(_) => {
+                    println!("Added upstream node!");
+                    gstate.nodes.push(node);
+                    gstate.save(ACCT_INFO);
+                },
+                Err(e) => println!("Failed to add upstream node: {}", e),
+            }
+
+
         }
         _ => {}
     }

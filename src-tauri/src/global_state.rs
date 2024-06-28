@@ -8,11 +8,18 @@ use std::{
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Node {
+    pub name: String,
+    pub ip_addr: Option<String>,
+}
+
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GlobalState {
     pub email: Option<String>,
     pub pass_sha384: Option<String>,
     pub tyb_key: Option<String>,
-    pub nodes: Vec<String>,
+    pub nodes: Vec<Node>,
     pub projects: Vec<String>
 }
 
@@ -47,12 +54,13 @@ impl GlobalState {
 
         let path = self.get_path(path);
 
-        let mut curr = GlobalState::load_from_path(&path)?;
+        let mut curr = GlobalState::load_from_path(&path)
+            .unwrap_or(GlobalState::default());
         self.merge_from(curr).unwrap();
 
         let data = bincode::serialize(&self)
             .map_err(|e| anyhow!("Failed to serialize data: {e}"))?;
-
+        
         fs::write(path, data)
             .map_err(|e| anyhow!("Failed to save data to disk: {e}"))?;
 
@@ -66,6 +74,9 @@ impl GlobalState {
     }
 
     fn merge_from (&mut self, mut other: Self) -> Result<()> {
+        if other.email.is_none() {
+            return Ok(());
+        }
         if self.email != other.email {
             return Err(anyhow!("Emails don't match"));
         }

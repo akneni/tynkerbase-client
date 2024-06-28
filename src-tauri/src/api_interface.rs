@@ -8,6 +8,20 @@ use tynkerbase_universal::{
     constants::TYB_APIKEY_HTTP_HEADER,
 };
 
+pub async fn ping(endpoint: &str) -> Result<()> {
+    let client = ClientBuilder::new()
+        .danger_accept_invalid_certs(true) // Disable TLS certificate validation
+        .timeout(std::time::Duration::from_secs(5))
+        .build()?;
+
+    let _res = client
+        .get(format!("{}", endpoint))
+        .send()
+        .await
+        .map_err(|e| anyhow!("Error sending https request: {e}"))?;
+
+    Ok(())
+}
 
 pub async fn create_proj(endpoint: &str, name: &str, data: Vec<u8>) -> Result<()> {
     // TODO: Add API key to this
