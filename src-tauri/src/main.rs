@@ -19,7 +19,8 @@ use tynkerbase_universal::{
         CompressionType 
     }, 
     docker_utils, 
-    proj_utils::{self, FileCollection}
+    proj_utils::{self, FileCollection},
+    netwk_utils::Node,
 };
 
 use std::{
@@ -38,7 +39,7 @@ use clap::{Parser, Subcommand};
 use prettytable::{Table, Row, Cell, row};
 
 
-use consts::{ACCT_INFO, STATE_PATH};
+use consts::APP_DATA;
 use global_state::GlobalState;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
@@ -57,20 +58,19 @@ fn launch_gui(state: GlobalState) {
         .expect("error while running tauri application");
 }
 
-
-async fn check_node_states(state: &GlobalState) -> Vec<(String, bool)> {
-    let mut res = vec![];
+async fn check_node_states(state: &GlobalState) -> HashMap<String, bool> {
+    let mut res = HashMap::new();
 
     let mut futures = vec![];
     for n in state.nodes.iter() {
-        let endpoint = format!("https://{}:7462", n.ip_addr.as_ref().unwrap());
+        let endpoint = format!("https://{}:7462", &n.addr);
         let f = api_interface::ping(endpoint);
         let handle = tokio::spawn(f);
-        futures.push((n.name.clone(), handle));
+        futures.push((n.node_id.clone(), handle));
     }
 
     for (n, h) in futures {
-        res.push((n, h.await.is_ok()));
+        res.insert(n,  h.await.is_ok());
     }
 
     res
@@ -101,13 +101,8 @@ enum TopLevelCmds {
         name: String
     },
     ListNodes,
-    AttachNode {
-        #[arg(short, long)]
-        name: String,
-        ip_addr: String,
-    },
-    SetUpstream {
-        #[arg(short, long, default_value_t = String::new())]
+    AddUpstream {
+        #[arg(long, default_value_t = String::new())]
         name: String
     }
 }
@@ -124,15 +119,15 @@ fn login() -> GlobalState {
             Ok(r) => r,
             Err(e) => {
                 println!("Error logging in: {e}");
-                let _ = fs::remove_file(STATE_PATH);
+                let _ = fs::remove_file(GlobalState::path());
                 std::process::exit(1);
             }
     };
     let mut gstate = GlobalState::default();
-    gstate.email = Some(email);
-    gstate.pass_sha384 = Some(hash_utils::sha384(&pass));
-    gstate.tyb_key = Some(key);
-    gstate.save(STATE_PATH)
+    gstate.email = email;
+    gstate.password = pass;
+    gstate.tyb_key = key;
+    gstate.save()
         .unwrap();
     gstate
 }
@@ -145,26 +140,20 @@ fn main() {
     let rt = tokio::runtime::Runtime::new().unwrap();
 
     // Load Global State
-    let state_path = Path::new(STATE_PATH);
-    let mut gstate = if !state_path.exists() && cmds.command != TopLevelCmds::Login {
-        println!("You must login first.");
-        let r = login();
-        println!("Log in successful!\n");
-        r
+    let mut gstate = if GlobalState::exists() {
+        GlobalState::load().unwrap()
     }
     else {
-        let mut gstate = GlobalState::load(STATE_PATH)
-            .expect("Failed to load global state");
-        if gstate.email.is_none() {
-            println!("You must login first.");
-            let r = login();
-            println!("Log in successful!\n");
-            r
+        let gstate = login();
+        match cmds.command {
+            TopLevelCmds::Login => process::exit(0),
+            _ => {},
         }
-        else {
-            gstate
-        }
+        gstate
     };
+
+    gstate.populate_nodes().unwrap();
+
 
     match cmds.command {
         TopLevelCmds::Gui => {
@@ -197,8 +186,8 @@ fn main() {
 
             'loop1: for ref n in conf.node_names {
                 for nl in gstate.nodes.iter() {
-                    if n == &nl.name {
-                        endpoints.push(nl.ip_addr.clone().unwrap());
+                    if n == &nl.node_id {
+                        endpoints.push(nl.addr.clone());
                         continue 'loop1;
                     }
                 }
@@ -209,7 +198,7 @@ fn main() {
             let mut handles = vec![];
             for e in endpoints.iter() {
                 let e = format!("https://{}:7462", e);
-                let f = api_interface::transfer_files(e, &conf.proj_name, "./", gstate.tyb_key.as_ref().unwrap());
+                let f = api_interface::transfer_files(e, &conf.proj_name, "./", &gstate.tyb_key);
                 handles.push(f);
             }
 
@@ -255,43 +244,11 @@ fn main() {
                 else {
                     "inactive"
                 };
-                table.add_row(row![&n.name, n.ip_addr.as_ref().unwrap(), status]);
+                table.add_row(row![&n.name, &n.addr, status]);
             }
             table.printstd();
         }
-        TopLevelCmds::AttachNode { mut name, ip_addr } => {
-            for n in gstate.nodes.iter() {
-                if n.name == name || name.len() == 0 {
-                    println!("Node names cannot be empty and must be unique. Please try again.");
-                    process::exit(0);
-                }
-            }
-
-            println!("Attaching node ...");
-            let endpoint = format!("https://{}:7462", &ip_addr);
-            let f = api_interface::get_id(&endpoint, gstate.tyb_key.as_ref().unwrap());
-            let id = rt.block_on(f);
-            let id = match id {
-                Ok(r) => r,
-                Err(e) => {
-                    println!("Unable to reach `{}` -> {}", &ip_addr, e);
-                    process::exit(1);
-                }
-            };
-
-            let new_node = global_state::Node {
-                name: name,
-                id: id,
-                ip_addr: Some(ip_addr),
-            };
-
-            gstate.nodes.push(new_node);
-            gstate.save(STATE_PATH)
-                .unwrap();
-            println!("Added upstream node!");
-
-        }
-        TopLevelCmds::SetUpstream { mut name } => {
+        TopLevelCmds::AddUpstream { mut name } => {
             if name.len() == 0 {
                 for (i, n) in gstate.nodes.iter().enumerate() {
                     println!("{})\t{}", i, &n.name);

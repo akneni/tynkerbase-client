@@ -1,4 +1,9 @@
-use tynkerbase_universal::{self, crypt_utils::hash_utils};
+use tynkerbase_universal::{
+    self, 
+    crypt_utils::hash_utils,
+    netwk_utils::Node,
+};
+
 use crate::consts::AUTH_ENDPOINT;
 use reqwest;
 use bincode;
@@ -40,4 +45,22 @@ pub async fn create_account(email: &str, password: &str) -> Result<()> {
     }
     
     Ok(())
+}
+
+pub async fn get_node_addrs(email: &str, pass_sha256: &str) -> Result<Vec<Node>>{
+    let endpoint = format!("{}/ngrok/get-all-addrs?email={}&pass_sha256={}", AUTH_ENDPOINT, email, pass_sha256);
+
+
+    let res = reqwest::get(&endpoint)
+        .await
+        .map_err(|e| anyhow!("Failed to communicate with server -> {}", e))?;
+
+    let bin = res
+        .bytes()
+        .await
+        .map_err(|e| anyhow!("Failed to communicate with server -> {}", e))?
+        .to_vec();
+
+    bincode::deserialize(&bin)
+        .map_err(|e| anyhow!("Failed to deserialize response -> {}", e))
 }
