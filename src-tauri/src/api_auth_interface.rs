@@ -47,7 +47,7 @@ pub async fn create_account(email: &str, password: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn get_node_addrs(email: &str, pass_sha256: &str) -> Result<Vec<Node>>{
+pub async fn get_nodes(email: &str, pass_sha256: &str) -> Result<Vec<Node>>{
     let endpoint = format!("{}/ngrok/get-all-addrs?email={}&pass_sha256={}", AUTH_ENDPOINT, email, pass_sha256);
 
 

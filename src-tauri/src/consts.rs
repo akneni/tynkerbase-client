@@ -1,14 +1,26 @@
-const fn get_app_data_path() -> &'static str {
-    #[cfg(target_os = "linux")]
-    return "~/.local/share/tynkerbase/";
-    
-    #[cfg(target_os = "windows")]
-    return "C:\\Users\\username\\AppData\\Local\\TynkerBase";
+use dirs::home_dir;
+use std::{
+    path::PathBuf,
+    env::consts::OS,
+};
 
-    #[allow(unreachable_code)]
-    ""
+pub fn app_data() -> String {
+    if let Some(home_path) = home_dir() {
+        let mut path = PathBuf::from(home_path);
+
+        if OS == "linux" {
+            path.push(".local/share/tynkerbase/");
+        }
+        else if OS == "windows" {
+            path.push("AppData\\Local\\TynkerBase");
+        }
+        else {
+            panic!("Error, OS `{}` not supported.", OS);
+        }
+
+        return path.to_str().unwrap().to_string();
+    } 
+    panic!("could not find home dir");
 }
 
-
-pub const APP_DATA: &str = get_app_data_path();
 pub const AUTH_ENDPOINT: &str = "https://tynkerbase-server.shuttleapp.rs";

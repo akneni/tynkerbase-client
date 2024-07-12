@@ -1,6 +1,6 @@
 use tynkerbase_universal::{crypt_utils::hash_utils, netwk_utils::Node};
-use crate::consts::APP_DATA;
-use crate::api_auth_interface::get_node_addrs;
+use crate::consts;
+use crate::api_auth_interface::get_nodes;
 use serde::{Serialize, Deserialize};
 use bincode;
 use anyhow::{anyhow, Result};
@@ -33,16 +33,16 @@ impl GlobalState {
     }
 
     pub fn path() -> String {
-        format!("{APP_DATA}/global-state.bin")
+        format!("{}/global-state.bin", consts::app_data())
     }
 
     pub fn exists() -> bool {
-        let path: String = format!("{APP_DATA}/global-state.bin");
+        let path: String = format!("{}/global-state.bin", consts::app_data());
         Path::new(&path).exists()
     }
 
     pub fn load () -> Result<Self> {
-        let path: String = format!("{APP_DATA}/global-state.bin");
+        let path: String = format!("{}/global-state.bin", consts::app_data());
         let bytes = fs::read(&path)
             .map_err(|e| anyhow!("Error reading from file `{}` -> {}", &path, e))?;
         let state: Self = bincode::deserialize(&bytes)
@@ -51,7 +51,12 @@ impl GlobalState {
     }
 
     pub fn save(&self) -> Result<()> {
-        let path: String = format!("{APP_DATA}/global-state.bin");
+        let app_data = consts::app_data();
+        if !Path::new(&app_data).exists() {
+            fs::create_dir_all(&app_data).unwrap();
+        }
+        let path: String = format!("{}/global-state.bin", &app_data);
+
         let bytes = bincode::serialize(&self)
             .map_err(|e| anyhow!("Error serializing state -> {}", e))?;
         fs::write(&path, &bytes)
@@ -64,7 +69,7 @@ impl GlobalState {
         let rt = Runtime::new().unwrap();
         let pass_sha256 = hash_utils::sha256(&self.password);
 
-        let f = get_node_addrs(&self.email, &pass_sha256);
+        let f = get_nodes(&self.email, &pass_sha256);
         let mut nodes = rt.block_on(f)?;
         self.nodes.append(&mut nodes);
         Ok(())

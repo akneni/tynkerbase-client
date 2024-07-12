@@ -25,6 +25,8 @@ sha2 = "0.10.8"
 hex = "0.4.3"
 rpassword = "7.3.1"
 prettytable-rs = "0.10.0"
+dirs = "5.0.1"
+
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

@@ -10,6 +10,7 @@ mod consts;
 mod global_state;
 mod config;
 
+use reqwest::header::ACCEPT;
 use tynkerbase_universal::{
     crypt_utils::{
         self, 
@@ -38,8 +39,6 @@ use tokio::{self, runtime::Runtime};
 use clap::{Parser, Subcommand};
 use prettytable::{Table, Row, Cell, row};
 
-
-use consts::APP_DATA;
 use global_state::GlobalState;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
@@ -60,6 +59,8 @@ fn launch_gui(state: GlobalState) {
 
 async fn check_node_states(state: &GlobalState) -> HashMap<String, bool> {
     let mut res = HashMap::new();
+
+    #[cfg(debug_assertions)] println!("NODES -> {:?}", state.nodes);
 
     let mut futures = vec![];
     for n in state.nodes.iter() {
@@ -111,8 +112,8 @@ enum TopLevelCmds {
 fn login() -> GlobalState {
     let rt = tokio::runtime::Runtime::new().unwrap();
 
-    let email = prompt("Enter your email: ");
-    let pass = prompt_password("Enter your password: ");
+    let email = crypt_utils::prompt("Enter your email: ");
+    let pass = crypt_utils::prompt_secret("Enter your password: ");
 
     let key = api_auth_interface::login(&email, &pass);
     let key = match rt.block_on(key) {
@@ -133,6 +134,7 @@ fn login() -> GlobalState {
 }
 
 fn main() {
+
     // Parse CLI commands
     let cmds = Cli::parse();
 
@@ -238,7 +240,7 @@ fn main() {
                 .collect::<HashMap<String, bool>>();
 
             for n  in gstate.nodes.iter() {
-                let status = if *status_map.get(&n.name).unwrap_or(&false) {
+                let status = if *(status_map.get(&n.node_id).unwrap_or(&false)){
                     "active"
                 }
                 else {
@@ -286,18 +288,3 @@ fn main() {
     }
 }
 
-
-fn prompt(message: &str) -> String {
-    print!("{}", message);
-    io::stdout().flush().unwrap();
-    let mut input = String::new();
-    io::stdin().read_line(&mut input).expect("Failed to read line");
-    input.trim().to_string()
-}
-
-fn prompt_password(message: &str) -> String {
-    print!("{}", message);
-    io::stdout().flush().unwrap();
-    let password = read_password().expect("Failed to read password");
-    password.trim().to_string()
-}
