@@ -1,19 +1,27 @@
 import { NodeInfoCard } from "../molecules/molecules"
 
-export function NodeMgmtPage() {
 
-    let nodes = [
-        {
-            id: "a698b8c70d08c9d8e098a9f8a",
-            name: "Node 1",
-            active: true,
-            ip_addr: "192.0.0.1",
-        }
-    ]
+interface NodeMgmtPageProps {
+    id: string,
+    name: string,
+    addr: string,
+    is_active: boolean
+}
+export function NodeMgmtPage(props: NodeMgmtPageProps[]) {
 
+    var nodes = [{
+        id: "a698b8c70d08c9d8e098a9f8a",
+        name: "Node 1",
+        addr: "192.0.0.1",
+        is_active: true,
+    }];
+
+    // props.push(nodes);
+
+    
     return (<>
         <div>
-            {nodes.map(d => (<NodeInfoCard id={d.id} name={d.name} active={d.active} ip_addr={d.ip_addr} />))}
+            {nodes.map(d => (<NodeInfoCard id={d.id} name={d.name} active={d.is_active} ip_addr={d.addr} />))}
         </div>
     </>)
 }

@@ -23,7 +23,7 @@ use tynkerbase_universal::{
     proj_utils::{self, FileCollection},
     netwk_utils::Node,
 };
-
+use consts::PROJ_JSON_CONFIG;
 use std::{
     fs::{self, remove_file},
     path::Path, 
@@ -98,7 +98,7 @@ enum TopLevelCmds {
     },
     Deploy,
     Init {
-        #[arg(short, long)]
+        #[arg(long, default_value_t = String::new())]
         name: String
     },
     ListNodes,
@@ -132,6 +132,7 @@ fn login() -> GlobalState {
         .unwrap();
     gstate
 }
+
 
 fn main() {
 
@@ -170,12 +171,12 @@ fn main() {
             res.unwrap();
         }
         TopLevelCmds::Deploy => {
-            let conf = fs::read_to_string(".tynkerbase-config.json")
+            let conf = fs::read_to_string(PROJ_JSON_CONFIG)
                 .expect("Error, not a valid tynkerbase project");
             let conf: config::Config = serde_json::from_str(&conf).unwrap();
 
             if conf.node_names.len() == 0 {
-                println!("No upstream nodes set. Use `tyb set-upstream` configure an upstream node");
+                println!("No upstream nodes set. Use `tyb add-upstream` configure an upstream node");
                 process::exit(0);
             }
 
@@ -188,38 +189,84 @@ fn main() {
 
             'loop1: for ref n in conf.node_names {
                 for nl in gstate.nodes.iter() {
-                    if n == &nl.node_id {
+                    if n == &nl.name {
                         endpoints.push(nl.addr.clone());
                         continue 'loop1;
                     }
                 }
-                println!("WARNING: no upstream node found for {}", &n);
+                println!("WARNING: no upstream node found for node name `{}`", &n);
+                #[cfg(debug_assertions)] println!("\n\nNodes: \n{:#?}\n\n", gstate.nodes);
             }
+
+            if endpoints.len() == 0 {
+                println!("No valid upstream nodes found.");
+                process::exit(0);
+            }
+
+            let mut failed_deployments = vec![];
+
+            let files = proj_utils::FileCollection::load("./", &conf.ignore)
+                .unwrap();
 
             println!("Transferring files...");
             let mut handles = vec![];
             for e in endpoints.iter() {
-                let e = format!("https://{}:7462", e);
-                let f = api_interface::transfer_files(e, &conf.proj_name, "./", &gstate.tyb_key);
-                handles.push(f);
+                let f = api_interface::deploy_proj(&e, &conf.proj_name, &gstate.tyb_key, &files);
+                handles.push((f, &conf.proj_name));
             }
 
-            #[cfg(debug_assertions)] {
-                println!("Waiting on futures");
-            }
-
-            for h in handles {
+            for (h, name) in handles {
                 let res = rt.block_on(h);
                 if let Err(e) = res {
-                    println!("Warning: error pushing changes node -> {e}");
+                    failed_deployments.push(format!("Failed to transfer files to node {} -> {}", name, e));
                 }
             }
+
+            println!("Building Images...");
+            let mut handles = vec![];
+            for e in endpoints.iter() {
+                let f = api_interface::build_img(e, &conf.proj_name, &gstate.tyb_key);
+                handles.push((f, &conf.proj_name));
+            }
+
+            for (h, name) in handles {
+                let res = rt.block_on(h);
+                if let Err(e) = res {
+                    failed_deployments.push(format!("Failed to build image on node {} -> {}", name, e));
+                }
+            }
+
+            println!("Starting up containers...");
+            let mut handles = vec![];
+            for e in endpoints.iter() {
+                let f = api_interface::spawn_container(e, &conf.proj_name, &gstate.tyb_key);
+                handles.push((f, &conf.proj_name));
+            }
+
+            for (h, name) in handles {
+                let res = rt.block_on(h);
+                if let Err(e) = res {
+                    failed_deployments.push(format!("Failed to spawn container on node {} -> {}", name, e));
+                }
+            }
+
+            if failed_deployments.len() != 0 {
+                println!("\n\n\nERROR SUMMARY:\n");
+                for (i, msg) in failed_deployments.iter().enumerate() {
+                    println!("{:2<})    {}\n\n", i, msg);
+                }
+            }
+
         }
-        TopLevelCmds::Init {name} => {
-            let conf_path = Path::new(".tynkerbase-config.json");
+        TopLevelCmds::Init { mut name } => {
+            let conf_path = Path::new(PROJ_JSON_CONFIG);
             if conf_path.exists() {
                 println!("Current directory is already a project!");
                 process::exit(1);
+            }
+
+            if name.len() == 0 {
+                name = crypt_utils::prompt("Please name this project: ");
             }
 
             let mut conf = config::Config::default();
@@ -227,7 +274,7 @@ fn main() {
             let conf = serde_json::to_string_pretty(&conf)
                 .expect("If you're seeing this error, send out a bug report.");
 
-            fs::write(".tynkerbase-config.json", &conf)
+            fs::write(PROJ_JSON_CONFIG, &conf)
                 .unwrap();
         },
         TopLevelCmds::ListNodes => {
@@ -271,7 +318,7 @@ fn main() {
                 name = gstate.nodes[idx].name.clone();
             }
 
-            let conf = fs::read_to_string(".tynkerbase-config.json")
+            let conf = fs::read_to_string(PROJ_JSON_CONFIG)
                 .expect("Error, not a valid tynkerbase project");
             let mut conf: config::Config = serde_json::from_str(&conf).unwrap();
             if conf.node_names.contains(&name) {
@@ -280,7 +327,7 @@ fn main() {
             }
             conf.node_names.push(name);
             let conf = serde_json::to_string_pretty(&conf).unwrap();
-            fs::write(".tynkerbase-config.json", conf)
+            fs::write(PROJ_JSON_CONFIG, conf)
                 .expect("Unable to write to config file.");
 
         }

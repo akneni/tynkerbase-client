@@ -24,3 +24,5 @@ pub fn app_data() -> String {
 }
 
 pub const AUTH_ENDPOINT: &str = "https://tynkerbase-server.shuttleapp.rs";
+pub const PROJ_JSON_CONFIG: &str = "tynkerbase-config.json";
+pub const NG_SKIP_WARN: &str = "ngrok-skip-browser-warning";
