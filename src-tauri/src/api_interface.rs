@@ -6,7 +6,7 @@ use serde::{Serialize, Deserialize};
 
 use crate::consts::NG_SKIP_WARN;
 use tynkerbase_universal::{
-    constants::TYB_APIKEY_HTTP_HEADER, crypt_utils::{compression_utils, BinaryPacket}, proj_utils
+    constants::TYB_APIKEY_HTTP_HEADER, crypt_utils::{compression_utils, BinaryPacket}, file_utils
 };
 
 pub async fn ping(endpoint: String) -> Result<()> {
@@ -68,7 +68,7 @@ pub async fn create_proj(endpoint: &str, name: &str, tyb_key: &str) -> Result<()
     Ok(())
 }
 
-pub async fn transfer_files(endpoint: &str, name: &str, tyb_key: &str, files: &proj_utils::FileCollection) -> Result<()> {
+pub async fn transfer_files(endpoint: &str, name: &str, tyb_key: &str, files: &file_utils::FileCollection) -> Result<()> {
     let endpoint = parse_endpoint(endpoint)?;
 
     let mut packet = BinaryPacket::from(files)?;
@@ -95,7 +95,7 @@ pub async fn transfer_files(endpoint: &str, name: &str, tyb_key: &str, files: &p
     Ok(())
 }
 
-pub async fn deploy_proj(endpoint: &str, name: &str, tyb_key: &str, files: &proj_utils::FileCollection) -> Result<()> {
+pub async fn deploy_proj(endpoint: &str, name: &str, tyb_key: &str, files: &file_utils::FileCollection) -> Result<()> {
     create_proj(endpoint, name, tyb_key).await?;
     transfer_files(endpoint, name, tyb_key, files).await?;
     Ok(())

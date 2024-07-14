@@ -10,6 +10,7 @@ mod consts;
 mod global_state;
 mod config;
 
+use tauri;
 use reqwest::header::ACCEPT;
 use tynkerbase_universal::{
     crypt_utils::{
@@ -20,7 +21,7 @@ use tynkerbase_universal::{
         CompressionType 
     }, 
     docker_utils, 
-    proj_utils::{self, FileCollection},
+    file_utils::{self, FileCollection},
     netwk_utils::Node,
 };
 use consts::PROJ_JSON_CONFIG;
@@ -60,23 +61,44 @@ fn launch_gui(state: GlobalState) {
 async fn check_node_states(state: &GlobalState) -> HashMap<String, bool> {
     let mut res = HashMap::new();
 
-    #[cfg(debug_assertions)] println!("NODES -> {:?}", state.nodes);
-
     let mut futures = vec![];
     for n in state.nodes.iter() {
-        let endpoint = format!("https://{}:7462", &n.addr);
-        let f = api_interface::ping(endpoint);
+        let f = api_interface::ping(n.addr.clone());
         let handle = tokio::spawn(f);
         futures.push((n.node_id.clone(), handle));
     }
 
     for (n, h) in futures {
-        res.insert(n,  h.await.is_ok());
+        if let Ok(Ok(_)) = h.await {
+            res.insert(n,  true);
+        }
+        else {
+            res.insert(n,  false);
+        }
     }
 
     res
 }
 
+fn prompt_node<'a>(gstate: &'a GlobalState) -> &'a Node {
+    for (i, n) in gstate.nodes.iter().enumerate() {
+        println!("{})\t{}", i, &n.name);
+    }
+    println!("============================================");
+    let idx = crypt_utils::prompt("Choose a node number: ");
+    let idx: usize = match idx.parse() {
+        Ok(r) => r,
+        _ => {
+            println!("`{}` is not a valid number", idx);
+            process::exit(0);
+        }
+    };
+    if idx >= gstate.nodes.len() {
+        println!("`{}` is out of range.", idx);
+        process::exit(0);
+    }
+    &gstate.nodes[idx]
+}
 
 
 #[derive(Parser)]
@@ -102,6 +124,10 @@ enum TopLevelCmds {
         name: String
     },
     ListNodes,
+    ListProjects {
+        #[arg(long, default_value_t = String::new())]
+        name: String,
+    },
     AddUpstream {
         #[arg(long, default_value_t = String::new())]
         name: String
@@ -190,7 +216,7 @@ fn main() {
             'loop1: for ref n in conf.node_names {
                 for nl in gstate.nodes.iter() {
                     if n == &nl.name {
-                        endpoints.push(nl.addr.clone());
+                        endpoints.push(nl);
                         continue 'loop1;
                     }
                 }
@@ -205,48 +231,51 @@ fn main() {
 
             let mut failed_deployments = vec![];
 
-            let files = proj_utils::FileCollection::load("./", &conf.ignore)
+            let files = file_utils::FileCollection::load("./", &conf.ignore)
                 .unwrap();
 
-            println!("Transferring files...");
+            println!("Transferring files...\nPayload Size: {} MB", files.sizeof() as f64 / 1_000_000.);
             let mut handles = vec![];
-            for e in endpoints.iter() {
-                let f = api_interface::deploy_proj(&e, &conf.proj_name, &gstate.tyb_key, &files);
-                handles.push((f, &conf.proj_name));
+            for &e in endpoints.iter() {
+                let f = api_interface::deploy_proj(&e.addr, &conf.proj_name, &gstate.tyb_key, &files);
+                handles.push((f, e));
             }
 
-            for (h, name) in handles {
-                let res = rt.block_on(h);
+            for (handle, node) in handles {
+                let res = rt.block_on(handle);
                 if let Err(e) = res {
-                    failed_deployments.push(format!("Failed to transfer files to node {} -> {}", name, e));
+                    failed_deployments.push(format!("Failed to transfer files to node `{}` -> {}", &node.name, e));
+                    endpoints.retain(|&e| e.name != node.name);
                 }
             }
 
             println!("Building Images...");
             let mut handles = vec![];
-            for e in endpoints.iter() {
-                let f = api_interface::build_img(e, &conf.proj_name, &gstate.tyb_key);
-                handles.push((f, &conf.proj_name));
+            for &e in endpoints.iter() {
+                let f = api_interface::build_img(&e.addr, &conf.proj_name, &gstate.tyb_key);
+                handles.push((f, e));
             }
 
-            for (h, name) in handles {
-                let res = rt.block_on(h);
+            for (handle, node) in handles {
+                let res = rt.block_on(handle);
                 if let Err(e) = res {
-                    failed_deployments.push(format!("Failed to build image on node {} -> {}", name, e));
+                    failed_deployments.push(format!("Failed to build image on node `{}` -> {}", node.name, e));
+                    endpoints.retain(|&e| e.name != node.name);
+
                 }
             }
 
             println!("Starting up containers...");
             let mut handles = vec![];
-            for e in endpoints.iter() {
-                let f = api_interface::spawn_container(e, &conf.proj_name, &gstate.tyb_key);
-                handles.push((f, &conf.proj_name));
+            for &e in endpoints.iter() {
+                let f = api_interface::spawn_container(&e.addr, &conf.proj_name, &gstate.tyb_key);
+                handles.push((f, e));
             }
 
-            for (h, name) in handles {
-                let res = rt.block_on(h);
+            for (handle, node) in handles {
+                let res = rt.block_on(handle);
                 if let Err(e) = res {
-                    failed_deployments.push(format!("Failed to spawn container on node {} -> {}", name, e));
+                    failed_deployments.push(format!("Failed to spawn container on node `{}` -> {}", node.name, e));
                 }
             }
 
@@ -297,25 +326,49 @@ fn main() {
             }
             table.printstd();
         }
-        TopLevelCmds::AddUpstream { mut name } => {
+        TopLevelCmds::ListProjects { mut name } => {
+            let mut node = &gstate.nodes[0];
             if name.len() == 0 {
-                for (i, n) in gstate.nodes.iter().enumerate() {
-                    println!("{})\t{}", i, &n.name);
-                }
-                println!("============================================");
-                let idx = crypt_utils::prompt("Choose a node number: ");
-                let idx: usize = match idx.parse() {
-                    Ok(r) => r,
-                    _ => {
-                        println!("`{}` is not a valid number", idx);
-                        process::exit(0);
+                node = prompt_node(&gstate); 
+                name = node.name.clone();
+                println!("\n\n");
+            }
+            else {
+                let mut found_node = false;
+                for n in gstate.nodes.iter() {
+                    if n.name == name {
+                        found_node = true;
+                        node = n;
                     }
-                };
-                if idx >= gstate.nodes.len() {
-                    println!("`{}` is out of range.", idx);
+                }
+                if !found_node {
+                    println!("No node named `{}`", name);
                     process::exit(0);
                 }
-                name = gstate.nodes[idx].name.clone();
+            }
+
+
+            let f = api_interface::list_projects(&node.addr, &gstate.tyb_key);
+            let res = rt.block_on(f);
+            match res {
+                Ok(v) =>  {
+                    println!("PROJECTS:");
+                    if v.len() == 0 {
+                        println!("None");
+                    }
+                    for (i, p) in v.iter().enumerate() {
+                        println!("{:2<})\t{}", i, p);
+                    }
+                }
+                Err(e) => {
+                    println!("Error fetching project data from node `{}` -> {:?}", name, e);
+                }
+            }
+        }
+        TopLevelCmds::AddUpstream { mut name } => {
+            if name.len() == 0 {
+                let node = prompt_node(&gstate);
+                name = node.name.clone();
             }
 
             let conf = fs::read_to_string(PROJ_JSON_CONFIG)
