@@ -51,8 +51,25 @@ pub async fn get_id(endpoint: &str, tyb_key: &str) -> Result<String> {
 
 pub async fn create_proj(endpoint: &str, name: &str, tyb_key: &str) -> Result<()> {
     let endpoint = parse_endpoint(endpoint)?;
-    let endpoint = format!("{}/files/proj/create-proj?name={}", endpoint, name);
-    #[cfg(debug_assertions)] println!("ENDPOINT: {}", endpoint);
+    let endpoint = format!("{}/files/proj/create-proj?name={}&confirm=false", endpoint, name);
+
+    let res = reqwest::ClientBuilder::new()
+        .danger_accept_invalid_certs(true)
+        .timeout(Duration::from_secs(5))
+        .build()? 
+        .get(endpoint)
+        .header(TYB_APIKEY_HTTP_HEADER, tyb_key)
+        .header(NG_SKIP_WARN, "easter egg here")
+        .send()
+        .await?;
+    
+    validate_response(res).await?;
+    Ok(())
+}
+
+pub async fn delete_proj(endpoint: &str, name: &str, tyb_key: &str) -> Result<()> {
+    let endpoint = parse_endpoint(endpoint)?;
+    let endpoint = format!("{}/files/proj/delete-proj?name={}&confirm=false", endpoint, name);
 
     let res = reqwest::ClientBuilder::new()
         .danger_accept_invalid_certs(true)
@@ -96,6 +113,7 @@ pub async fn transfer_files(endpoint: &str, name: &str, tyb_key: &str, files: &f
 }
 
 pub async fn deploy_proj(endpoint: &str, name: &str, tyb_key: &str, files: &file_utils::FileCollection) -> Result<()> {
+    purge_project(endpoint, name, tyb_key).await?;
     create_proj(endpoint, name, tyb_key).await?;
     transfer_files(endpoint, name, tyb_key, files).await?;
     Ok(())
@@ -157,6 +175,26 @@ pub async fn spawn_container(endpoint: &str, name: &str, tyb_key: &str) -> Resul
 
     let res = client
         .get(format!("{}/docker/proj/spawn-container?name={}", endpoint, name))
+        .header(TYB_APIKEY_HTTP_HEADER, tyb_key)
+        .header(NG_SKIP_WARN, "easter egg here")
+        .send()
+        .await
+        .map_err(|e| anyhow!("Error sending https request: {e}"))?;
+
+    validate_response(res).await?;
+    Ok(())
+}
+
+pub async fn purge_project(endpoint: &str, name: &str, tyb_key: &str) -> Result<()> {
+    let endpoint = parse_endpoint(endpoint)?;
+
+    let client = ClientBuilder::new()
+        .danger_accept_invalid_certs(true) 
+        .timeout(Duration::from_secs(10))
+        .build()?;
+
+    let res = client
+        .get(format!("{}/files/proj/purge-project?name={}", endpoint, name))
         .header(TYB_APIKEY_HTTP_HEADER, tyb_key)
         .header(NG_SKIP_WARN, "easter egg here")
         .send()

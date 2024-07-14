@@ -4,7 +4,7 @@
 
 #![allow(unused)] // TEMPORARY, REMOVE BEFORE PROD  
 
-mod api_interface;
+mod agent_interface;
 mod api_auth_interface;
 mod consts;
 mod global_state;
@@ -63,7 +63,7 @@ async fn check_node_states(state: &GlobalState) -> HashMap<String, bool> {
 
     let mut futures = vec![];
     for n in state.nodes.iter() {
-        let f = api_interface::ping(n.addr.clone());
+        let f = agent_interface::ping(n.addr.clone());
         let handle = tokio::spawn(f);
         futures.push((n.node_id.clone(), handle));
     }
@@ -237,7 +237,7 @@ fn main() {
             println!("Transferring files...\nPayload Size: {} MB", files.sizeof() as f64 / 1_000_000.);
             let mut handles = vec![];
             for &e in endpoints.iter() {
-                let f = api_interface::deploy_proj(&e.addr, &conf.proj_name, &gstate.tyb_key, &files);
+                let f = agent_interface::deploy_proj(&e.addr, &conf.proj_name, &gstate.tyb_key, &files);
                 handles.push((f, e));
             }
 
@@ -252,7 +252,7 @@ fn main() {
             println!("Building Images...");
             let mut handles = vec![];
             for &e in endpoints.iter() {
-                let f = api_interface::build_img(&e.addr, &conf.proj_name, &gstate.tyb_key);
+                let f = agent_interface::build_img(&e.addr, &conf.proj_name, &gstate.tyb_key);
                 handles.push((f, e));
             }
 
@@ -268,7 +268,7 @@ fn main() {
             println!("Starting up containers...");
             let mut handles = vec![];
             for &e in endpoints.iter() {
-                let f = api_interface::spawn_container(&e.addr, &conf.proj_name, &gstate.tyb_key);
+                let f = agent_interface::spawn_container(&e.addr, &conf.proj_name, &gstate.tyb_key);
                 handles.push((f, e));
             }
 
@@ -348,7 +348,7 @@ fn main() {
             }
 
 
-            let f = api_interface::list_projects(&node.addr, &gstate.tyb_key);
+            let f = agent_interface::list_projects(&node.addr, &gstate.tyb_key);
             let res = rt.block_on(f);
             match res {
                 Ok(v) =>  {
