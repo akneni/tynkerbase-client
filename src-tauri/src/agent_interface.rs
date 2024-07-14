@@ -150,7 +150,7 @@ pub async fn build_img (endpoint: &str, name: &str, tyb_key: &str) -> Result<()>
 
     let client = ClientBuilder::new()
         .danger_accept_invalid_certs(true) 
-        .timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(2000))
         .build()?;
 
     let res = client
@@ -159,7 +159,7 @@ pub async fn build_img (endpoint: &str, name: &str, tyb_key: &str) -> Result<()>
         .header(NG_SKIP_WARN, "easter egg here")
         .send()
         .await
-        .map_err(|e| anyhow!("Error sending https request: {e}"))?;
+        .map_err(|e| anyhow!("Error sending https request [fn build_img]: {e}"))?;
 
     validate_response(res).await?;
     Ok(())
@@ -179,7 +179,7 @@ pub async fn spawn_container(endpoint: &str, name: &str, tyb_key: &str) -> Resul
         .header(NG_SKIP_WARN, "easter egg here")
         .send()
         .await
-        .map_err(|e| anyhow!("Error sending https request: {e}"))?;
+        .map_err(|e| anyhow!("Error sending https request [fn spawn_container]: {e}"))?;
 
     validate_response(res).await?;
     Ok(())
@@ -190,7 +190,7 @@ pub async fn purge_project(endpoint: &str, name: &str, tyb_key: &str) -> Result<
 
     let client = ClientBuilder::new()
         .danger_accept_invalid_certs(true) 
-        .timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(12))
         .build()?;
 
     let res = client
@@ -199,7 +199,7 @@ pub async fn purge_project(endpoint: &str, name: &str, tyb_key: &str) -> Result<
         .header(NG_SKIP_WARN, "easter egg here")
         .send()
         .await
-        .map_err(|e| anyhow!("Error sending https request: {e}"))?;
+        .map_err(|e| anyhow!("Error sending https request [fn purge_project]: {e}"))?;
 
     validate_response(res).await?;
     Ok(())

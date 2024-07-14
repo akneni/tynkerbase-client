@@ -249,7 +249,9 @@ fn main() {
                 }
             }
 
-            println!("Building Images...");
+            if endpoints.len() > 0 {
+                println!("Building Images...");
+            }
             let mut handles = vec![];
             for &e in endpoints.iter() {
                 let f = agent_interface::build_img(&e.addr, &conf.proj_name, &gstate.tyb_key);
@@ -265,7 +267,9 @@ fn main() {
                 }
             }
 
-            println!("Starting up containers...");
+            if endpoints.len() > 0 {
+                println!("Starting up containers...");
+            }
             let mut handles = vec![];
             for &e in endpoints.iter() {
                 let f = agent_interface::spawn_container(&e.addr, &conf.proj_name, &gstate.tyb_key);
