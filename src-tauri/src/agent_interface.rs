@@ -186,7 +186,7 @@ pub async fn list_containers(endpoint: &str, tyb_key: &str) -> Result<Vec<HashMa
 
 
 /// Returns a vector of hashmaps. Each hashmap has the following keys
-/// `CONTAINER`   `CPU %`     `MEM USAGE / LIMIT`   `MEM %`     `NET I/O`   `BLOCK I/O`   `PIDS`
+/// `CONTAINER ID` `CONTAINER`   `CPU %`     `MEM USAGE / LIMIT`   `MEM %`     `NET I/O`   `BLOCK I/O`   `PIDS`
 pub async fn list_container_stats(endpoint: &str, tyb_key: &str) -> Result<Vec<HashMap<String, String>>> {
     let endpoint = parse_endpoint(endpoint)?;
 
@@ -212,6 +212,33 @@ pub async fn list_container_stats(endpoint: &str, tyb_key: &str) -> Result<Vec<H
         .collect::<Vec<String>>();    
 
     Ok(cvt_hashmap(text, '\t'))
+}
+
+/// Returns a vector of hashmaps. Each hashmap has the following keys
+/// `CONTAINER`   `CPU %`     `MEM USAGE / LIMIT`   `MEM %`     `NET I/O`   `BLOCK I/O`   `PIDS`
+pub async fn list_container_stats_all(endpoint: &str, tyb_key: &str) -> Result<Vec<HashMap<String, String>>> {
+    // TODO: finish this function
+    let (lst, stats) = tokio::join!(
+        list_containers(endpoint, tyb_key),
+        list_container_stats(endpoint, tyb_key),
+    );
+
+    let mut result = lst?;
+    if let Ok(stats) = stats {
+        for stat in stats {
+            let s_id = stat.get("CONTAINER ID").unwrap();
+            for r in result.iter_mut() {
+                let r_id = r.get("CONTAINER ID").unwrap();
+                if s_id == r_id {
+                    r.extend(stat);
+                    break;
+                }
+            }
+        }
+    }
+    
+
+    Ok(result)
 }
 
 pub async fn build_img (endpoint: &str, name: &str, tyb_key: &str) -> Result<()> {

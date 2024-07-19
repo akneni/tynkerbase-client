@@ -41,6 +41,8 @@ export function NodeInfoPage() {
     const [diags, setDiags] = useState<NodeDiags>(() => {
         return {node_id: '...', name: '...'};
     });
+
+    const [fetchedData, setFetchedData] = useState(() => false);
     
     const [active, setActive] = useState(() => false);
     let additionalStyles = {color: (active) ? 'green' : 'red'};
@@ -52,8 +54,10 @@ export function NodeInfoPage() {
             if (diags.cpu != null || diags.mem_total != null) {
                 setActive(true);
             }
+            setFetchedData(true);
         })
     }, []);
+
 
     const formatMem = (mem?: string) => {
         if (mem == null) {
@@ -78,7 +82,7 @@ export function NodeInfoPage() {
                         <span className={NodeInfoPageStyles.attribute} style={additionalStyles}>{status}</span>
                     </p>
                 </div>
-                <div className={NodeInfoPageStyles.header_info_block}>
+                {fetchedData && <div className={NodeInfoPageStyles.header_info_block}>
                     <p className={NodeInfoPageStyles.text}>
                         <span className={NodeInfoPageStyles.attribute}>CPU: </span>{diags.cpu}
                     </p>
@@ -88,8 +92,13 @@ export function NodeInfoPage() {
                     <p className={NodeInfoPageStyles.text}>
                         <span className={NodeInfoPageStyles.attribute}>RAM: </span>{formatMem(diags.mem_total)}
                     </p>
-                </div>
+                </div>}
             </div>
+
+            <div>
+                
+            </div>
+
         </div>
     </>)
 }

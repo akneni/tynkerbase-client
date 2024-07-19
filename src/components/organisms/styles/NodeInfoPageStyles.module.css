@@ -40,3 +40,15 @@
     padding-left: 15px;
     padding-right: 15px;
 }
+
+
+.docker_container {
+    display: flex;
+    flex-direction: column;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.docker_container_card {
+    
+}
