@@ -1,4 +1,10 @@
-html, body {
+* {
+	font-family: monospace;
+}
+
+html, body, #root {
+	display: flex;
+	flex-direction: row;
     height: 100%;
 	width: 100%;
     margin: 0;
@@ -11,6 +17,7 @@ html, body {
 	flex-direction: row;
 	height: 100%;
 	width: 100%;
+	flex-grow: 1;
 }
 
 .hidden {

@@ -1,12 +1,17 @@
-use std::{process, time::Duration};
+use std::{
+    process, 
+    time::Duration,
+    collections::HashMap,
+};
 
 use reqwest::{self, ClientBuilder};
 use anyhow::{anyhow, Result};
 use serde::{Serialize, Deserialize};
 
 use crate::consts::NG_SKIP_WARN;
+use crate::global_state::GlobalState;
 use tynkerbase_universal::{
-    constants::TYB_APIKEY_HTTP_HEADER, crypt_utils::{compression_utils, BinaryPacket}, file_utils
+    constants::TYB_APIKEY_HTTP_HEADER, crypt_utils::{compression_utils, BinaryPacket}, file_utils, netwk_utils::NodeDiags
 };
 
 pub async fn ping(endpoint: String) -> Result<()> {
@@ -204,6 +209,56 @@ pub async fn purge_project(endpoint: &str, name: &str, tyb_key: &str) -> Result<
     validate_response(res).await?;
     Ok(())
 }
+
+pub async fn check_node_states(state: &GlobalState) -> HashMap<String, bool> {
+    let mut res = HashMap::new();
+
+    let mut futures = vec![];
+    for n in state.nodes.iter() {
+        let f = ping(n.addr.clone());
+        let handle = tokio::spawn(f);
+        futures.push((n.node_id.clone(), handle));
+    }
+
+    for (n, h) in futures {
+        if let Ok(Ok(_)) = h.await {
+            res.insert(n,  true);
+        }
+        else {
+            res.insert(n,  false);
+        }
+    }
+
+    res
+}
+
+pub async fn get_diags(endpoint: &str, tyb_key: &str) -> Result<NodeDiags> {
+    let endpoint = parse_endpoint(endpoint)?;
+
+    let client = ClientBuilder::new()
+        .danger_accept_invalid_certs(true) 
+        .timeout(Duration::from_secs(7))
+        .build()?;
+
+    let res = client
+        .get(format!("{}/diags/gen-diags", &endpoint))
+        .header(TYB_APIKEY_HTTP_HEADER, tyb_key)
+        .header(NG_SKIP_WARN, "easter egg here")
+        .send()
+        .await
+        .map_err(|e| anyhow!("Error sending https request [fn get_diags]: {e}"))?;
+
+    let text = res
+        .text()
+        .await
+        .map_err(|e| anyhow!("Error extracting text from https response [fn get_diags]: {e}"))?;
+
+    let diags: NodeDiags = serde_json::from_str(&text)
+        .map_err(|e| anyhow!("Error deserializing json response from agent [fn get_diags]: {e}"))?;
+
+    Ok(diags)
+}
+
 
 fn parse_endpoint(endpoint: impl Into<String>) -> Result<String> {
     let endpoint: String = endpoint.into();

@@ -9,6 +9,7 @@ mod api_auth_interface;
 mod consts;
 mod global_state;
 mod config;
+mod tauri_cmds;
 
 use tauri;
 use reqwest::header::ACCEPT;
@@ -42,42 +43,17 @@ use prettytable::{Table, Row, Cell, row};
 
 use global_state::GlobalState;
 
-// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-#[tauri::command]
-fn greet(name: &str, state: tauri::State<'_, Mutex<GlobalState>>) -> String {
-    format!("Hello, {}! You current path is", name)
-}
-
 fn launch_gui(state: GlobalState) {
     let state = Arc::new(Mutex::new(state));
 
     tauri::Builder::default()
         .manage(state)
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![
+            tauri_cmds::list_nodes,
+            tauri_cmds::get_diags,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-async fn check_node_states(state: &GlobalState) -> HashMap<String, bool> {
-    let mut res = HashMap::new();
-
-    let mut futures = vec![];
-    for n in state.nodes.iter() {
-        let f = agent_interface::ping(n.addr.clone());
-        let handle = tokio::spawn(f);
-        futures.push((n.node_id.clone(), handle));
-    }
-
-    for (n, h) in futures {
-        if let Ok(Ok(_)) = h.await {
-            res.insert(n,  true);
-        }
-        else {
-            res.insert(n,  false);
-        }
-    }
-
-    res
 }
 
 fn prompt_node<'a>(gstate: &'a GlobalState) -> &'a Node {
@@ -105,7 +81,7 @@ fn prompt_node<'a>(gstate: &'a GlobalState) -> &'a Node {
 #[command(version = "0.0.1")]
 struct Cli {
     #[command(subcommand)]
-    command: TopLevelCmds,
+    command: Option<TopLevelCmds>,
 }
 
 #[derive(Subcommand, PartialEq, Eq)]
@@ -163,7 +139,8 @@ fn login() -> GlobalState {
 fn main() {
 
     // Parse CLI commands
-    let cmds = Cli::parse();
+    let mut command = Cli::parse();
+    let command = command.command.unwrap_or(TopLevelCmds::Gui);
 
     // Create tokio runtime
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -174,7 +151,7 @@ fn main() {
     }
     else {
         let gstate = login();
-        match cmds.command {
+        match command {
             TopLevelCmds::Login => process::exit(0),
             _ => {},
         }
@@ -184,7 +161,7 @@ fn main() {
     gstate.populate_nodes().unwrap();
 
 
-    match cmds.command {
+    match command {
         TopLevelCmds::Gui => {
             launch_gui(gstate);
         },
@@ -315,7 +292,7 @@ fn main() {
 
             table.set_titles(row!["Name", "Ip Addr", "Status"]);
 
-            let status_map = rt.block_on(check_node_states(&gstate))
+            let status_map = rt.block_on(agent_interface::check_node_states(&gstate))
                 .into_iter()
                 .collect::<HashMap<String, bool>>();
 

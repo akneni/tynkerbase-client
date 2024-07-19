@@ -1,22 +1,25 @@
-// Dependencies
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/tauri";
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 
 // Components
 import { SidePanel } from './components/molecules/molecules';
-import { NodeMgmtPage } from "./components/organisms/organisms";
+import { NodeMgmtPage, NodeInfoPage } from "./components/organisms/organisms";
 
 // Styling
 import "./App.css";
 
-function App() {	
-	return (
+function App() {
+	return (<>
 		<div className="global-container">			
-			<SidePanel/>
-			<NodeMgmtPage/>
+			<Router>
+				<SidePanel/>
+				<Routes>
+					<Route path="/" element={<NodeMgmtPage/>}/>
+					<Route path="/node/:id" element={<NodeInfoPage/>}/>
+					<Route path="*" element={<p>Not Found</p>}/>
+				</Routes>
+			</Router>
 		</div>
-	);
+	</>);
 }
 
 export default App;
