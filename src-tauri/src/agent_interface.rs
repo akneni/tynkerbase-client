@@ -150,6 +150,70 @@ pub async fn list_projects(endpoint: &str, tyb_key: &str) -> Result<Vec<String>>
     Ok(projects)
 }
 
+/// Returns a vector of hashmaps of all the containers running on the machine.
+/// Each of the hashmaps have the following keys: `CONTAINER ID`   `IMAGE`     `COMMAND`   `CREATED AT`   `STATUS`    `PORTS`     `NAMES`
+pub async fn list_containers(endpoint: &str, tyb_key: &str) -> Result<Vec<HashMap<String, String>>> {
+    let endpoint = parse_endpoint(endpoint)?;
+
+    let client = ClientBuilder::new()
+        .danger_accept_invalid_certs(true) 
+        .timeout(Duration::from_secs(5))
+        .build()?;
+
+    let res = client
+        .get(format!("{}/docker/proj/list-containers", endpoint))
+        .header(TYB_APIKEY_HTTP_HEADER, tyb_key)
+        .header(NG_SKIP_WARN, "easter egg here")
+        .send()
+        .await
+        .map_err(|e| anyhow!("Error sending https request: {e}"))?;
+
+    let res = validate_response(res).await?;
+
+    let text = res
+        .text()
+        .await
+        .map_err(|e| anyhow!("Error extracting text from response [fn list_containers] => {}", e))?;
+
+    let table = text
+        .split("\n")
+        .filter(|&s| s.trim().len() != 0)
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
+
+    Ok(cvt_hashmap(table, '\t'))
+}
+
+
+/// Returns a vector of hashmaps. Each hashmap has the following keys
+/// `CONTAINER`   `CPU %`     `MEM USAGE / LIMIT`   `MEM %`     `NET I/O`   `BLOCK I/O`   `PIDS`
+pub async fn list_container_stats(endpoint: &str, tyb_key: &str) -> Result<Vec<HashMap<String, String>>> {
+    let endpoint = parse_endpoint(endpoint)?;
+
+    let client = ClientBuilder::new()
+        .danger_accept_invalid_certs(true) 
+        .timeout(Duration::from_secs(5))
+        .build()?;
+
+    let res = client
+        .get(format!("{}/docker/proj/list-container-stats", endpoint))
+        .header(TYB_APIKEY_HTTP_HEADER, tyb_key)
+        .header(NG_SKIP_WARN, "easter egg here")
+        .send()
+        .await
+        .map_err(|e| anyhow!("Error sending https request: {e}"))?;
+
+    let res = validate_response(res).await?;
+    let text = res.text().await
+        .map_err(|e| anyhow!("Error extracting bytes from response -> {}", e))?
+        .split("\n")
+        .filter(|&s| s.trim().len() != 0)
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();    
+
+    Ok(cvt_hashmap(text, '\t'))
+}
+
 pub async fn build_img (endpoint: &str, name: &str, tyb_key: &str) -> Result<()> {
     let endpoint = parse_endpoint(endpoint)?;
 
@@ -284,4 +348,28 @@ async fn validate_response(response: reqwest::Response) -> Result<reqwest::Respo
         return Err(anyhow!("\nNon 200 response from node\nStatus Code: {:?}\nText Body: {}\n", status, text));
     }
     Ok(response)
+}
+
+fn cvt_hashmap(v: Vec<String>, split_char: char) -> Vec<HashMap<String, String>> {
+    let mut map = vec![];
+
+    let headers = v[0]
+        .clone()
+        .split(split_char)
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
+
+    for row in v.into_iter().skip(1) {
+        let row = row
+            .split(split_char)
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+        let mut ph = HashMap::new();
+        for (h, v) in headers.iter().zip(row.iter()) {
+            ph.insert(h.clone(), v.clone());
+        }
+        map.push(ph);
+    }
+
+    map
 }
