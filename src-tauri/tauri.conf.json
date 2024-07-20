@@ -7,7 +7,7 @@
 	},
 	"package": {
 		"productName": "tynkerbase-client",
-		"version": "0.0.0"
+		"version": "0.0.1"
 	},
 	"tauri": {
 		"allowlist": {
@@ -19,7 +19,7 @@
 		},
 		"windows": [
 			{
-				"title": "tynkerbase-client",
+				"title": "TynkerBase Console",
 				"width": 800,
 				"height": 600
 			}
@@ -29,7 +29,7 @@
 		},
 		"bundle": {
 			"active": true,
-			"targets": "all",
+			"targets": ["deb", "msi"],
 			"identifier": "com.anishkanthamneni.tynkerbase",
 			"icon": [
 				"icons/32x32.png",
