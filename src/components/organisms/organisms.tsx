@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/tauri';
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { FaExclamationTriangle } from 'react-icons/fa';
 
 import NodeMgmtPageStyles from "./styles/NodeMgmtPageStyles.module.css";
@@ -12,7 +12,7 @@ import { ContainerStats, shorten } from '../utils';
 
 export function NodeMgmtPage() {
     const [nodes, setNodes] = useState<Node[]>(() => []);
-    const [render, setRender] = useState(() => 0);
+    const [render, _setRender] = useState(() => 0);
 
     useEffect(() => {
         invoke<Node[]>("list_nodes").then(v => {
@@ -25,14 +25,8 @@ export function NodeMgmtPage() {
         });
     }, [render]);
 
-    const reRender = () => {
-        setRender(render+1);
-    }
-    
-
     return (<>
         <div className={NodeMgmtPageStyles.container}>
-            {/* <p onClick={reRender}>RERENDER</p> */}
             {nodes.map(d => (<NodeInfoCard key={d.node_id} node_id={d.node_id} name={d.name} active={d.status == 'active'} addr={d.addr} />))}
         </div>
     </>)

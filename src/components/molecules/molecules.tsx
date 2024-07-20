@@ -8,7 +8,6 @@ import ComingSoonStyles from "./styles/ComingSoonStyles.module.css";
 
 import { shorten } from '../utils';
 import { Icon } from "../atoms/atoms";
-import { message } from '@tauri-apps/api/dialog';
 
 export function SidePanel() {
     var pageList = [
