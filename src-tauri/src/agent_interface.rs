@@ -193,11 +193,16 @@ pub async fn list_containers(endpoint: &str, tyb_key: &str) -> Result<Vec<HashMa
         .collect::<Vec<String>>();
 
     // Change keys 
-    let mut table = cvt_hashmap(table, '\t');
+    let mut table = cvt_hashmap(table, "|||");
     for t in table.iter_mut() {
         for (&old_k, &new_k) in name_mappings.iter() {
             if let Some(value) = t.remove(old_k) {
                 t.insert(new_k.to_string(), value);
+            }
+            else {
+                #[cfg(debug_assertions)] {
+                    println!("\n\nERROR FORMATTING RES: {:?}\n\n", t)
+                }
             }
         }
     }
@@ -244,7 +249,7 @@ pub async fn list_container_stats(endpoint: &str, tyb_key: &str) -> Result<Vec<H
         .collect::<Vec<String>>();    
 
     // Change keys 
-    let mut table = cvt_hashmap(text, '\t');
+    let mut table = cvt_hashmap(text, "|||");
     for t in table.iter_mut() {
         for (&old_k, &new_k) in name_mappings.iter() {
             if let Some(value) = t.remove(old_k) {
@@ -259,8 +264,9 @@ pub async fn list_container_stats(endpoint: &str, tyb_key: &str) -> Result<Vec<H
 /// Returns a vector of hashmaps. Each hashmap has the following keys
 /// `container_id` `container`   `cpu_perc`     `mem_usage_limit`   `mem_perc`     `net_io`   `block_io`   `pids`
 /// `image`     `command`   `created_at`   `status`    `ports`     `names`
-pub async fn list_container_stats_all(endpoint: &str, tyb_key: &str) -> Result<Vec<HashMap<String, String>>> {
-    // TODO: finish this function
+pub async fn list_container_stats_all(endpoint: impl AsRef<str>, tyb_key: impl AsRef<str>) -> Result<Vec<HashMap<String, String>>> {
+    let endpoint = endpoint.as_ref();
+    let tyb_key = tyb_key.as_ref();
     let (lst, stats) = tokio::join!(
         list_containers(endpoint, tyb_key),
         list_container_stats(endpoint, tyb_key),
@@ -420,7 +426,7 @@ async fn validate_response(response: reqwest::Response) -> Result<reqwest::Respo
     Ok(response)
 }
 
-fn cvt_hashmap(v: Vec<String>, split_char: char) -> Vec<HashMap<String, String>> {
+fn cvt_hashmap(v: Vec<String>, split_char: &str) -> Vec<HashMap<String, String>> {
     let mut map = vec![];
 
     let headers = v[0]

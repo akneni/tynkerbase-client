@@ -10,6 +10,11 @@ html, body, #root {
     margin: 0;
     padding: 0;
 	overflow: hidden;
+	background-color: black;
+}
+
+html p {
+	color: white;
 }
 
 .global-container {

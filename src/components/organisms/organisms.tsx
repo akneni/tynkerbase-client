@@ -1,17 +1,18 @@
 import { invoke } from '@tauri-apps/api/tauri';
 import { useState, useEffect } from 'react';
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { FaExclamationTriangle } from 'react-icons/fa';
 
 import NodeMgmtPageStyles from "./styles/NodeMgmtPageStyles.module.css";
 import NodeInfoPageStyles from "./styles/NodeInfoPageStyles.module.css";
-import { NodeInfoCard } from "../molecules/molecules"
+import { NodeInfoCard, ContainerCard, ComingSoon } from "../molecules/molecules"
 import { Node, NodeDiags } from "../schemas";
-import { shorten } from '../utils';
+import { ContainerStats, shorten } from '../utils';
 
 
 export function NodeMgmtPage() {
     const [nodes, setNodes] = useState<Node[]>(() => []);
+    const [render, setRender] = useState(() => 0);
 
     useEffect(() => {
         invoke<Node[]>("list_nodes").then(v => {
@@ -19,14 +20,19 @@ export function NodeMgmtPage() {
             // for (let i = 0; i < 10; i++) { 
             //     r.push(v[0]);
             // }
+            console.log("RErendered!! ");
             setNodes(v);
         });
-    }, []);
+    }, [render]);
 
+    const reRender = () => {
+        setRender(render+1);
+    }
     
 
     return (<>
         <div className={NodeMgmtPageStyles.container}>
+            {/* <p onClick={reRender}>RERENDER</p> */}
             {nodes.map(d => (<NodeInfoCard key={d.node_id} node_id={d.node_id} name={d.name} active={d.status == 'active'} addr={d.addr} />))}
         </div>
     </>)
@@ -44,6 +50,8 @@ export function NodeInfoPage() {
     const [diags, setDiags] = useState<NodeDiags>(() => {
         return {node_id: '...', name: '...'};
     });
+
+    const [containers, setContainers] = useState<ContainerStats[]>(() => []);
 
     const [fetchedData, setFetchedData] = useState(() => false);
     
@@ -68,6 +76,13 @@ export function NodeInfoPage() {
         })
     }, [id])
 
+    useEffect (() => {
+        invoke<ContainerStats[]>('get_container_stats', {nodeId: id}).then(res => {
+            console.log(res);
+            setContainers(res);
+        })
+    }, [id])
+
 
     const formatMem = (mem: string | null | undefined) => {
         if (mem != null && mem != undefined) {
@@ -76,7 +91,6 @@ export function NodeInfoPage() {
         }
         return 'unknown';
     }
-    
 
     return (<>
         <div className={NodeInfoPageStyles.container}>
@@ -87,7 +101,7 @@ export function NodeInfoPage() {
                 </p>
             </div>}
             <div className={NodeInfoPageStyles.header}>
-                <img className={NodeInfoPageStyles.logo} src="../server-icon.svg"/>
+                <img className={NodeInfoPageStyles.logo} src="/icons/server-icon.svg"/>
                 <div className={NodeInfoPageStyles.header_info_block}>
                     <p className={NodeInfoPageStyles.text}>
                         <span className={NodeInfoPageStyles.attribute}>Node Name: </span>{diags.name}
@@ -100,7 +114,7 @@ export function NodeInfoPage() {
                         <span className={NodeInfoPageStyles.attribute} style={additionalStyles}>{status}</span>
                     </p>
                 </div>
-                {fetchedData && <div className={NodeInfoPageStyles.header_info_block}>
+                {(fetchedData && active) && <div className={NodeInfoPageStyles.header_info_block}>
                     <p className={NodeInfoPageStyles.text}>
                         <span className={NodeInfoPageStyles.attribute}>CPU: </span>{diags.cpu}
                     </p>
@@ -113,8 +127,19 @@ export function NodeInfoPage() {
                 </div>}
             </div>
 
-            <div>
-                
+            <div className={NodeInfoPageStyles.docker_container_card}>
+                {
+                    containers.map(c => {
+                    return <ContainerCard 
+                        imgName={c.image} 
+                        cpu_perc={c.cpu_perc} 
+                        mem_perc={c.mem_perc} 
+                        command={c.command} 
+                        status={c.status} 
+                        ports={c.ports}
+                    />
+                })
+                }
             </div>
 
         </div>
@@ -123,12 +148,12 @@ export function NodeInfoPage() {
 
 export function PrebuiltsPage() {
     return (<>
-        <p>Coming Soon!</p>
+        <ComingSoon message={['Coming Soon!', 'Will provide prebuild containers (Mongo, Postgres, Redis, etc) that can be launched with a single button click.']}/>
     </>)
 }
 
 export function DataviewPage() {
     return (<>
-        <p>Coming Soon!</p>
+        <ComingSoon message={['Coming Soon!', 'Will provide a uniform UI to view data in any database.']}/>
     </>)
 }

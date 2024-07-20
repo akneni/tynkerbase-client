@@ -1,14 +1,33 @@
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
 import SidePanelStyles from "./styles/SidePanelStyles.module.css";
 import NodeInfoCardStyles from "./styles/NodeInfoCardStyles.module.css";
-import { shorten } from '../utils';
+import ContainerCardStyles from "./styles/ContainerCardStyles.module.css"
+import ComingSoonStyles from "./styles/ComingSoonStyles.module.css";
 
-import { ServerIcon } from "../atoms/atoms";
+import { shorten } from '../utils';
+import { Icon } from "../atoms/atoms";
+import { message } from '@tauri-apps/api/dialog';
 
 export function SidePanel() {
+    var pageList = [
+        {url: '/nodes', icon: '/icons/server-icon.svg', isSelected: false},
+        {url: '/prebuilts', icon: '/icons/docker-icon.svg', isSelected: false},
+        {url: '/dataview', icon: '/icons/dataview-icon.svg', isSelected: false},
+    ];
+    
+    let location = useLocation().pathname;
+    for (let i = 0; i < pageList.length; i++) {
+        if (pageList[i].url == location) {
+            pageList[i].isSelected = true;
+            break;
+        }
+    }
+
     return (<>
         <div className={SidePanelStyles.container}>
-            <ServerIcon/>
+            {pageList.map(obj => <Icon key={obj.url} routerPath={obj.url} iconPath={obj.icon} isSelected={obj.isSelected}/>)}
         </div>
     </>)
 }
@@ -49,3 +68,69 @@ export function NodeInfoCard(props: NodeInfoCardProps) {
     </>)
 }
 
+interface ContainerCardProps {
+    imgName: string,
+    cpu_perc: string;
+    mem_perc: string;
+    command: string;
+    status: string;
+    ports: string;
+}
+export function ContainerCard(props: ContainerCardProps) {
+    return (<>
+        <div className={ContainerCardStyles.container}>
+            <p className={ContainerCardStyles.title}>{props.imgName.substring(0, props.imgName.length - 6)}</p>
+            <div className={ContainerCardStyles.info_box}>
+                <table className={ContainerCardStyles.table_class}>
+                    <thead>
+                        <tr>
+                        <th>CPU</th>
+                        <th>MEM</th>
+                        <th>Status</th>
+                        <th>Ports</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                        <td>{props.cpu_perc}</td>
+                        <td>{props.mem_perc}</td>
+                        <td>{props.status}</td>
+                        <td>{props.ports}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </>);
+}
+
+interface ComingSoonProps {
+    message: string[],
+}
+export function ComingSoon(props: ComingSoonProps) {
+    
+    return (<>
+        <div className={ComingSoonStyles.container}>
+            {props.message.map(s => <h2 key={s}>{s}</h2>)}
+        </div>
+    </>)
+}
+
+export function InitialRouter() {
+    let navigate = useNavigate();
+    
+    useEffect(() => {
+        // TODO: implement logic here to check if the user is logged in or not
+        var isLoggedIn = true;
+    
+        if (isLoggedIn) {
+            navigate('/nodes');
+        }
+        else {
+            navigate('/login');
+        }
+    }, [navigate]);
+
+
+    return (<></>)
+}

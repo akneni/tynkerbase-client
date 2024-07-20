@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 
 // Components
-import { SidePanel } from './components/molecules/molecules';
+import { SidePanel, InitialRouter } from './components/molecules/molecules';
 import { NodeMgmtPage, NodeInfoPage, DataviewPage, PrebuiltsPage } from "./components/organisms/organisms";
 
 // Styling
@@ -13,7 +13,8 @@ function App() {
 			<Router>
 				<SidePanel/>
 				<Routes>
-					<Route path="/" element={<NodeMgmtPage/>}/>
+					<Route path="/" element={<InitialRouter/>}/>
+					<Route path="/nodes" element={<NodeMgmtPage/>}/>
 					<Route path="/node/:id" element={<NodeInfoPage/>}/>
 					<Route path="/prebuilts" element={<PrebuiltsPage/>}/>
 					<Route path="/dataview" element={<DataviewPage/>}/>

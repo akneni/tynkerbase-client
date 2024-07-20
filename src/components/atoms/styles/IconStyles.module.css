@@ -1,0 +1,21 @@
+.container {
+    display: flex;
+    align-self: center;
+    justify-content: center;
+    cursor: pointer;
+    background-color: rgb(38, 38, 38);
+
+    padding: 5px, 5px;
+    width: 80%;
+    border-radius: 25px;
+}
+
+.icon {
+    height: 40px;
+    width: 40px;
+    align-self: center;
+    
+    
+    /* filter: invert(33%) sepia(98%) saturate(7482%) hue-rotate(4deg) brightness(109%) contrast(107%); */
+    /* fill: rgb(255, 69, 0); */
+}

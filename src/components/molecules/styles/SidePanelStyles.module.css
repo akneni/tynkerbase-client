@@ -1,10 +1,12 @@
-
 .container {
     display: flex;
     flex-direction: column;
-    background-color: rgb(28, 4, 50);
+    background-color: rgb(48, 48, 48);
     height: 100%;
-    width:80px;
+    width: 80px;
     padding-top: 15px;
     align-self: flex-start;
+    border-radius: 10px;
+    gap: 3%;
+    overflow-x: hidden;
 }

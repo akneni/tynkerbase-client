@@ -1,16 +1,30 @@
 import { useNavigate } from "react-router-dom";
-import ServerIconStyles from "./styles/ServerIconStyles.module.css";
+import ServerIconStyles from "./styles/IconStyles.module.css";
 
-export function ServerIcon() {
+interface IconProps {
+    routerPath: string,
+    iconPath: string,
+    isSelected?: boolean,
+}
+export function Icon(props: IconProps) {
     const navigate = useNavigate();
     const onClick = () => {
-        navigate("/");
+        navigate(props.routerPath);
     }
+
+    var styles = {backgroundColor: "transparent"};
+    if (props.isSelected != undefined && props.isSelected) {
+        styles.backgroundColor = "rgb(38, 38, 38)";
+    }
+
     return (<>
-        <img 
-            src="./server-icon.svg" 
-            className={ServerIconStyles.icon}
-            onClick={onClick}
-        />
+        <div className={ServerIconStyles.container} style={styles}>
+            <img 
+                src={props.iconPath} 
+                className={ServerIconStyles.icon}
+                onClick={onClick}
+            />
+        </div>
+
     </>)
 }
