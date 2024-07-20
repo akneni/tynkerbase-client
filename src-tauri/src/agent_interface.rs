@@ -14,6 +14,7 @@ use tynkerbase_universal::{
     constants::TYB_APIKEY_HTTP_HEADER, crypt_utils::{compression_utils, BinaryPacket}, file_utils, netwk_utils::NodeDiags
 };
 
+/// If this function returns an Ok(()) value, the node is up and running.
 pub async fn ping(endpoint: String) -> Result<()> {
     let endpoint = parse_endpoint(endpoint)?;
     let client = ClientBuilder::new()
@@ -151,9 +152,19 @@ pub async fn list_projects(endpoint: &str, tyb_key: &str) -> Result<Vec<String>>
 }
 
 /// Returns a vector of hashmaps of all the containers running on the machine.
-/// Each of the hashmaps have the following keys: `CONTAINER ID`   `IMAGE`     `COMMAND`   `CREATED AT`   `STATUS`    `PORTS`     `NAMES`
+/// Each of the hashmaps have the following keys: `container_id`   `image`     `command`   `created_at`   `status`    `ports`     `names`
 pub async fn list_containers(endpoint: &str, tyb_key: &str) -> Result<Vec<HashMap<String, String>>> {
     let endpoint = parse_endpoint(endpoint)?;
+
+    let name_mappings: HashMap<&str, &str> = vec![
+        ("CONTAINER ID", "container_id"),
+        ("IMAGE", "image"),
+        ("COMMAND", "command"),
+        ("CREATED AT", "created_at"),
+        ("STATUS", "status"),
+        ("PORTS", "ports"),
+        ("NAMES", "names"),
+    ].into_iter().collect();
 
     let client = ClientBuilder::new()
         .danger_accept_invalid_certs(true) 
@@ -181,14 +192,35 @@ pub async fn list_containers(endpoint: &str, tyb_key: &str) -> Result<Vec<HashMa
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
 
-    Ok(cvt_hashmap(table, '\t'))
+    // Change keys 
+    let mut table = cvt_hashmap(table, '\t');
+    for t in table.iter_mut() {
+        for (&old_k, &new_k) in name_mappings.iter() {
+            if let Some(value) = t.remove(old_k) {
+                t.insert(new_k.to_string(), value);
+            }
+        }
+    }
+
+    Ok(table)
 }
 
 
 /// Returns a vector of hashmaps. Each hashmap has the following keys
-/// `CONTAINER ID` `CONTAINER`   `CPU %`     `MEM USAGE / LIMIT`   `MEM %`     `NET I/O`   `BLOCK I/O`   `PIDS`
+/// `container_id` `container`   `cpu_perc`     `mem_usage_limit`   `mem_perc`     `net_io`   `block_io`   `pids`
 pub async fn list_container_stats(endpoint: &str, tyb_key: &str) -> Result<Vec<HashMap<String, String>>> {
     let endpoint = parse_endpoint(endpoint)?;
+
+    let name_mappings: HashMap<&str, &str> = vec![
+        ("CONTAINER ID", "container_id"),
+        ("CONTAINER", "container"),
+        ("CPU %", "cpu_perc"),
+        ("MEM USAGE / LIMIT", "mem_usage_limit"),
+        ("MEM %", "mem_perc"),
+        ("NET I/O", "net_io"),
+        ("BLOCK I/O", "block_io"),
+        ("PIDS", "pids")
+    ].into_iter().collect();
 
     let client = ClientBuilder::new()
         .danger_accept_invalid_certs(true) 
@@ -211,11 +243,22 @@ pub async fn list_container_stats(endpoint: &str, tyb_key: &str) -> Result<Vec<H
         .map(|s| s.to_string())
         .collect::<Vec<String>>();    
 
-    Ok(cvt_hashmap(text, '\t'))
+    // Change keys 
+    let mut table = cvt_hashmap(text, '\t');
+    for t in table.iter_mut() {
+        for (&old_k, &new_k) in name_mappings.iter() {
+            if let Some(value) = t.remove(old_k) {
+                t.insert(new_k.to_string(), value);
+            }
+        }
+    }
+
+    Ok(table)
 }
 
 /// Returns a vector of hashmaps. Each hashmap has the following keys
-/// `CONTAINER`   `CPU %`     `MEM USAGE / LIMIT`   `MEM %`     `NET I/O`   `BLOCK I/O`   `PIDS`
+/// `container_id` `container`   `cpu_perc`     `mem_usage_limit`   `mem_perc`     `net_io`   `block_io`   `pids`
+/// `image`     `command`   `created_at`   `status`    `ports`     `names`
 pub async fn list_container_stats_all(endpoint: &str, tyb_key: &str) -> Result<Vec<HashMap<String, String>>> {
     // TODO: finish this function
     let (lst, stats) = tokio::join!(
@@ -226,9 +269,9 @@ pub async fn list_container_stats_all(endpoint: &str, tyb_key: &str) -> Result<V
     let mut result = lst?;
     if let Ok(stats) = stats {
         for stat in stats {
-            let s_id = stat.get("CONTAINER ID").unwrap();
+            let s_id = stat.get("container_id").unwrap();
             for r in result.iter_mut() {
-                let r_id = r.get("CONTAINER ID").unwrap();
+                let r_id = r.get("container_id").unwrap();
                 if s_id == r_id {
                     r.extend(stat);
                     break;
@@ -332,7 +375,7 @@ pub async fn get_diags(endpoint: &str, tyb_key: &str) -> Result<NodeDiags> {
         .build()?;
 
     let res = client
-        .get(format!("{}/diags/gen-diags", &endpoint))
+        .get(format!("{}/diags/get-diags", &endpoint))
         .header(TYB_APIKEY_HTTP_HEADER, tyb_key)
         .header(NG_SKIP_WARN, "easter egg here")
         .send()

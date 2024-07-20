@@ -49,8 +49,10 @@ fn launch_gui(state: GlobalState) {
     tauri::Builder::default()
         .manage(state)
         .invoke_handler(tauri::generate_handler![
+            tauri_cmds::ping,
             tauri_cmds::list_nodes,
             tauri_cmds::get_diags,
+            tauri_cmds::get_container_stats,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

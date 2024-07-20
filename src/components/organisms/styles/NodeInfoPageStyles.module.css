@@ -7,6 +7,23 @@
     background-color: black;
 }
 
+.err_msg {
+    display: flex;
+    flex-direction: row;
+    background-color: rgb(178, 71, 71);
+    border-radius: 8px;
+    width: 90%;
+    align-self: center;
+    justify-content: center;
+    margin: 10px 0px;
+}
+
+.err_msg p {
+    color: black;
+    font-weight: bold;
+    width: 90%;
+}
+
 .header {
     display: flex;
     flex-direction: row;

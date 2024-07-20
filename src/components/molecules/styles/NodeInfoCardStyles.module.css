@@ -9,6 +9,7 @@
 	transition: transform 0.3s ease;
 	background-color: black;
 	border-radius: 7px;
+	cursor: pointer;
 }
 
 .container:hover {

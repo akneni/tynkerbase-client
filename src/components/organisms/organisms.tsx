@@ -1,6 +1,7 @@
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/tauri';
 import { useState, useEffect } from 'react';
 import { useParams } from "react-router-dom";
+import { FaExclamationTriangle } from 'react-icons/fa';
 
 import NodeMgmtPageStyles from "./styles/NodeMgmtPageStyles.module.css";
 import NodeInfoPageStyles from "./styles/NodeInfoPageStyles.module.css";
@@ -34,9 +35,11 @@ export function NodeMgmtPage() {
 
 export function NodeInfoPage() {
     var { id } = useParams();
-    if (id == null) {
+    if (id == null || id == undefined) {
         id = 'unknown';
     }
+
+    const [err, setErr] = useState<string | null>(() => null);
 
     const [diags, setDiags] = useState<NodeDiags>(() => {
         return {node_id: '...', name: '...'};
@@ -49,25 +52,40 @@ export function NodeInfoPage() {
     let status = (active) ? 'Active' : 'Inactive';
     
     useEffect(() => {
-        invoke<NodeDiags>('get_diags', {node_id: id}).then(diags => {
+        invoke<NodeDiags>('get_diags', {nodeId: id})
+        .then(diags => {
             setDiags(diags)
-            if (diags.cpu != null || diags.mem_total != null) {
-                setActive(true);
-            }
             setFetchedData(true);
         })
-    }, []);
+        .catch(e => {
+            setErr(`Error getting node diagnostics: ${e}`)
+        })
+    }, [id]);
+
+    useEffect (() => {
+        invoke<boolean>('ping', {nodeId: id}).then(res => {
+            setActive(res);
+        })
+    }, [id])
 
 
-    const formatMem = (mem?: string) => {
-        if (mem == null) {
-            return null;
+    const formatMem = (mem: string | null | undefined) => {
+        if (mem != null && mem != undefined) {
+            mem = `${mem}`;
+            return `${mem.substring(0, 4)} GB`;
         }
-        return `${mem.substring(0, 4)} GB`
+        return 'unknown';
     }
+    
 
     return (<>
         <div className={NodeInfoPageStyles.container}>
+            {err && <div className={NodeInfoPageStyles.err_msg}>
+                <p>
+                    <FaExclamationTriangle style={{ color: 'black', marginRight: '5px' }} />
+                    {err}
+                </p>
+            </div>}
             <div className={NodeInfoPageStyles.header}>
                 <img className={NodeInfoPageStyles.logo} src="../server-icon.svg"/>
                 <div className={NodeInfoPageStyles.header_info_block}>
@@ -103,3 +121,14 @@ export function NodeInfoPage() {
     </>)
 }
 
+export function PrebuiltsPage() {
+    return (<>
+        <p>Coming Soon!</p>
+    </>)
+}
+
+export function DataviewPage() {
+    return (<>
+        <p>Coming Soon!</p>
+    </>)
+}

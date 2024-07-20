@@ -2,3 +2,4 @@ src-tauri/.git
 src-tauri/target
 src-tauri/acct-info/*
 node_modules
+dist
