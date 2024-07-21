@@ -5,7 +5,8 @@ import { FaExclamationTriangle } from 'react-icons/fa';
 
 import NodeMgmtPageStyles from "./styles/NodeMgmtPageStyles.module.css";
 import NodeInfoPageStyles from "./styles/NodeInfoPageStyles.module.css";
-import { NodeInfoCard, ContainerCard, ComingSoon } from "../molecules/molecules"
+
+import { NodeInfoCard, ContainerCard, ComingSoon, NodeTitleBar } from "../molecules/molecules"
 import { Node, NodeDiags } from "../schemas";
 import { ContainerStats, shorten } from '../utils';
 
@@ -27,7 +28,10 @@ export function NodeMgmtPage() {
 
     return (<>
         <div className={NodeMgmtPageStyles.container}>
-            {nodes.map(d => (<NodeInfoCard key={d.node_id} node_id={d.node_id} name={d.name} active={d.status == 'active'} addr={d.addr} />))}
+            <NodeTitleBar/>
+            <div className={NodeMgmtPageStyles.node_cards_container}>
+                {nodes.map(d => (<NodeInfoCard key={d.node_id} node_id={d.node_id} name={d.name} active={d.status == 'active'} addr={d.addr} />))}
+            </div>
         </div>
     </>)
 }
@@ -88,6 +92,7 @@ export function NodeInfoPage() {
 
     return (<>
         <div className={NodeInfoPageStyles.container}>
+
             {err && <div className={NodeInfoPageStyles.err_msg}>
                 <p>
                     <FaExclamationTriangle style={{ color: 'black', marginRight: '5px' }} />

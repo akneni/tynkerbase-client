@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { FaSync } from 'react-icons/fa';
 
 import SidePanelStyles from "./styles/SidePanelStyles.module.css";
 import NodeInfoCardStyles from "./styles/NodeInfoCardStyles.module.css";
 import ContainerCardStyles from "./styles/ContainerCardStyles.module.css"
 import ComingSoonStyles from "./styles/ComingSoonStyles.module.css";
+import NodeTitleBarStyles from "./styles/NodeTitleBarStyles.module.css";
 
 import { shorten } from '../utils';
 import { Icon } from "../atoms/atoms";
@@ -38,7 +40,6 @@ interface NodeInfoCardProps {
     addr: string,
     uptime?: string,
 }
-
 export function NodeInfoCard(props: NodeInfoCardProps) {
     let additionalStyles = {color: (props.active) ? 'green' : 'red'};
     let status = (props.active) ? 'Active' : 'Inactive';
@@ -132,4 +133,17 @@ export function InitialRouter() {
 
 
     return (<></>)
+}
+
+export function NodeTitleBar() {
+    return (<>
+        <div className={NodeTitleBarStyles.container}>
+            <img src="/images/tynkerbase-banner-2.png"/>
+            {/* <p>sd</p> */}
+            <div>
+                <FaSync/>
+                <p>Refresh</p>
+            </div>
+        </div>
+    </>)
 }
