@@ -63,8 +63,15 @@ export function NodeInfoCard(props: NodeInfoCardProps) {
     const options = [
         {
             label: "Delete Node",
-            func: () => {
-                invoke('delete_node', {'node_id': props.node_id});
+            func: (event: MouseEvent) => {
+                event.stopPropagation();
+                invoke('delete_node', {'nodeId': props.node_id})
+                    .then(() => {
+                        navigate('/nodes');
+                    })
+                    .catch(err => {
+                        console.log(err);
+                    });
             }
         }
     ];
