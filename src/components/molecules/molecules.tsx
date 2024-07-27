@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState, MouseEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaSync } from 'react-icons/fa';
+import { FaSync, FaCog } from 'react-icons/fa';
 
 import SidePanelStyles from "./styles/SidePanelStyles.module.css";
 import NodeInfoCardStyles from "./styles/NodeInfoCardStyles.module.css";
@@ -9,7 +9,8 @@ import ComingSoonStyles from "./styles/ComingSoonStyles.module.css";
 import NodeTitleBarStyles from "./styles/NodeTitleBarStyles.module.css";
 
 import { shorten } from '../utils';
-import { Icon } from "../atoms/atoms";
+import { Icon, ContextMenu } from "../atoms/atoms";
+import { invoke } from '@tauri-apps/api';
 
 export function SidePanel() {
     var pageList = [
@@ -48,9 +49,38 @@ export function NodeInfoCard(props: NodeInfoCardProps) {
         navigate(`/node/${props.node_id}`);
     }
 
+    // Handle opening and closing the context menu
+    const [isOpen, setIsOpen] = useState(() => false);
+    const handleOpenMenu = (event: MouseEvent<SVGElement>) => {
+        event.stopPropagation();
+        setIsOpen(!isOpen);
+    }
+    const handleCloseMenu = () => {
+        setIsOpen(false);
+    };
+
+
+    const options = [
+        {
+            label: "Delete Node",
+            func: () => {
+                invoke('delete_node', {'node_id': props.node_id});
+            }
+        }
+    ];
+
     return (<>
         <div className={NodeInfoCardStyles.container} onClick={onClick}>
-            <div className={NodeInfoCardStyles.card_image}></div>
+            <div className={NodeInfoCardStyles.card_image}>
+                <FaCog className={NodeInfoCardStyles.settings_icon} onClick={handleOpenMenu}/>
+                <ContextMenu
+                    options={options}
+                    isOpen={isOpen}
+                    onClose={handleCloseMenu}
+                />
+
+            </div>
+
             <div className={NodeInfoCardStyles.card_description}>
                 <h2 className={NodeInfoCardStyles.card_title}>{props.name}</h2>
                 <div className={NodeInfoCardStyles.card_section}>

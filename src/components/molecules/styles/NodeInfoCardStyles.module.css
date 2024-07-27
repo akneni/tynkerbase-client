@@ -10,6 +10,7 @@
 	background-color: black;
 	border-radius: 7px;
 	cursor: pointer;
+	/* margin: 30px, 30px; */
 }
 
 .container:hover {
@@ -17,6 +18,8 @@
 }
 
 .card_image {
+	display: flex;
+	flex-direction: row;
 	width: 100%;
 	height: 40%;
 	background-image: url('https://t3.ftcdn.net/jpg/02/82/88/40/360_F_282884082_STySsku3D5KneVinoQPCxmGOqGNK82fR.jpg');
@@ -43,3 +46,30 @@
 	font-weight: bold;
 }
 
+
+.settings_icon {
+	font-size: large;
+	color: red;
+	padding: 7px 7px;
+	border-radius: 100px;
+	transition: transform 0.5s ease;
+}
+
+.settings_icon:hover{
+	transform:  rotate(180deg);
+}
+
+.settings_popup_menu {
+	margin-top: 12px;
+	background-color: gray;
+	border-radius: 7px;
+	padding: 1px 0px;
+}
+
+.settings_popup_menu_section {
+	padding: 4px 4px;
+}
+
+.settings_popup_menu_section:hover {
+	background-color: rgb(83, 83, 83);
+}

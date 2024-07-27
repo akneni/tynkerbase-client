@@ -417,7 +417,7 @@ fn parse_endpoint(endpoint: impl Into<String>) -> Result<String> {
     Err(anyhow!("Endpoint `{}` is in an unexpected format.", endpoint))
 }
 
-async fn validate_response(response: reqwest::Response) -> Result<reqwest::Response> {
+pub async fn validate_response(response: reqwest::Response) -> Result<reqwest::Response> {
     if !response.status().is_success() {
         let status = response.status();
         let mut text = response.text().await.unwrap_or("NONE".to_string());

@@ -20,6 +20,7 @@
     flex-direction: row;
     justify-content: space-evenly;
     overflow-y: scroll;
+    overflow-x: hidden;
     height: 80%;
     gap: 15px;
 }

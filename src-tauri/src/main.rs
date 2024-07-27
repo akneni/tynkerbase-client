@@ -36,22 +36,25 @@ use std::collections::HashMap;
 use std::io::{self, Write};
 use rpassword::read_password;
 use bincode;
-use tokio::{self, runtime::Runtime};
+use tokio::{self, runtime::Runtime, sync::Mutex as TkMutex};
 use clap::{Parser, Subcommand};
 use prettytable::{Table, Row, Cell, row};
 
 use global_state::GlobalState;
 
 fn launch_gui(state: GlobalState) {
-    let state = Arc::new(Mutex::new(state));
+    let state = Arc::new(TkMutex::new(state));
 
     tauri::Builder::default()
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             tauri_cmds::ping,
             tauri_cmds::list_nodes,
+            tauri_cmds::delete_node,
             tauri_cmds::get_diags,
             tauri_cmds::get_container_stats,
+            tauri_cmds::create_account,
+            tauri_cmds::delete_account,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

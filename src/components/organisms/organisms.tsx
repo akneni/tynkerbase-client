@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/tauri';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useParams } from "react-router-dom";
 import { FaExclamationTriangle } from 'react-icons/fa';
 
@@ -25,6 +25,7 @@ export function NodeMgmtPage() {
             setNodes(v);
         });
     }, [render]);
+
 
     return (<>
         <div className={NodeMgmtPageStyles.container}>
@@ -155,4 +156,50 @@ export function DataviewPage() {
     return (<>
         <ComingSoon message={['Coming Soon!', 'Will provide a uniform UI to view data in any database.']}/>
     </>)
+}
+
+export function LoginPage() {
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+  
+    const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
+        e.preventDefault();
+        invoke('create_account', {'email': email, 'password': password})
+            .then(r => {
+                
+            })
+            .catch(err => {
+
+            });
+    };
+  
+    return (
+      <div className="register-container">
+        <h2>Create Account</h2>
+        <form onSubmit={handleSubmit}>
+            <div>
+                <label htmlFor="email">Email:</label>
+                <input
+                    type="email"
+                    id="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                />
+            </div>
+            <div>
+                <label htmlFor="password">Password:</label>
+                <input
+                    type="password"
+                    id="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                />
+            </div>
+            <button type="submit">Create Account</button>
+        </form>
+      </div>
+    );
 }

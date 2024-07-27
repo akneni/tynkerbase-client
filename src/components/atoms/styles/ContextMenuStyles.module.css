@@ -1,0 +1,55 @@
+.container {
+    position: relative;
+}
+
+.settings_popup_menu {
+    display: flex;
+    flex-direction: column;
+    min-width: 150px;
+    background-color: #0D1117;
+    justify-content: center;
+    border-radius: 5px;
+    margin-top: 7px;
+}
+  
+.settings_popup_menu_section {
+    background-color: transparent;
+    border: none;
+    padding: 10px;
+    color: white;
+    display: flex;
+    position: relative;
+    gap: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: bold;
+}
+  
+.settings_popup_menu_section:not(:active):hover,
+.settings_popup_menu_section:focus {
+    background-color: #21262C;
+}
+  
+.settings_popup_menu_section:focus,
+.settings_popup_menu_section:active {
+    background-color: #1A1F24;
+    outline: none;
+}
+  
+.settings_popup_menu_section::before {
+    content: "";
+    position: absolute;
+    top: 5px;
+    left: -10px;
+    width: 5px;
+    height: 80%;
+    background-color: #2F81F7;
+    border-radius: 5px;
+    opacity: 0;
+}
+  
+.settings_popup_menu_section:focus::before,
+.settings_popup_menu_section:active::before {
+    opacity: 1;
+}
+  
