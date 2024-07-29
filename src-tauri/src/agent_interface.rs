@@ -11,7 +11,10 @@ use serde::{Serialize, Deserialize};
 use crate::consts::NG_SKIP_WARN;
 use crate::global_state::GlobalState;
 use tynkerbase_universal::{
-    constants::TYB_APIKEY_HTTP_HEADER, crypt_utils::{compression_utils, BinaryPacket}, file_utils, netwk_utils::NodeDiags
+    constants::TYB_APIKEY_HTTP_HEADER, 
+    crypt_utils::{compression_utils, BinaryPacket}, 
+    file_utils, 
+    netwk_utils::{NodeDiags, ProjConfig},
 };
 
 /// If this function returns an Ok(()) value, the node is up and running.
@@ -285,6 +288,15 @@ pub async fn list_container_stats_all(endpoint: impl AsRef<str>, tyb_key: impl A
             }
         }
     }
+
+    // Parse the `ports` field to make it more readable
+    for cont in result.iter_mut() {
+        let p = match cont.get("ports") {
+            Some(p) => p,
+            None => break,
+        };
+        cont.insert("ports".to_string(), parse_port_str(p));
+    }
     
 
     Ok(result)
@@ -310,18 +322,22 @@ pub async fn build_img (endpoint: &str, name: &str, tyb_key: &str) -> Result<()>
     Ok(())
 }
 
-pub async fn spawn_container(endpoint: &str, name: &str, tyb_key: &str) -> Result<()> {
+pub async fn spawn_container(endpoint: &str, config: &ProjConfig, tyb_key: &str) -> Result<()> {
     let endpoint = parse_endpoint(endpoint)?;
+
+    let data = bincode::serialize(config)
+        .map_err(|e| anyhow!("Failed to serialize config [fn spawn_container] -> {}", e))?;
 
     let client = ClientBuilder::new()
         .danger_accept_invalid_certs(true) 
-        .timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(12))
         .build()?;
 
     let res = client
-        .get(format!("{}/docker/proj/spawn-container?name={}", endpoint, name))
+        .post(format!("{}/docker/proj/spawn-container", endpoint))
         .header(TYB_APIKEY_HTTP_HEADER, tyb_key)
         .header(NG_SKIP_WARN, "easter egg here")
+        .body(data)
         .send()
         .await
         .map_err(|e| anyhow!("Error sending https request [fn spawn_container]: {e}"))?;
@@ -332,6 +348,8 @@ pub async fn spawn_container(endpoint: &str, name: &str, tyb_key: &str) -> Resul
 
 pub async fn purge_project(endpoint: &str, name: &str, tyb_key: &str) -> Result<()> {
     let endpoint = parse_endpoint(endpoint)?;
+
+    #[cfg(debug_assertions)] println!("ENDPOINT: {}", endpoint);
 
     let client = ClientBuilder::new()
         .danger_accept_invalid_certs(true) 
@@ -346,7 +364,13 @@ pub async fn purge_project(endpoint: &str, name: &str, tyb_key: &str) -> Result<
         .await
         .map_err(|e| anyhow!("Error sending https request [fn purge_project]: {e}"))?;
 
+    #[cfg(debug_assertions)] println!("request sent successfully");
+
+
     validate_response(res).await?;
+
+    #[cfg(debug_assertions)] println!("purge project validated");
+
     Ok(())
 }
 
@@ -426,6 +450,27 @@ pub async fn validate_response(response: reqwest::Response) -> Result<reqwest::R
     Ok(response)
 }
 
+/// Parses the default port string returned by docker to XXXX/tcp where XXXX is the host's exposed port
+fn parse_port_str(port: &str) -> String {
+    let port = match port.split_once(":::") {
+        Some(p) => p,
+        None => return port.to_string(),
+    }.1;
+
+    let host_p = match port.split_once("->") {
+        Some(p) => p,
+        None => return port.to_string(),
+    }.0;
+    
+    let conn_type = match port.split_once("/") {
+        Some(p) => p,
+        None => return port.to_string(),
+    }.1;
+
+    format!("{}/{}", host_p, conn_type)
+}
+
+/// Parses the response of a table 
 fn cvt_hashmap(v: Vec<String>, split_char: &str) -> Vec<HashMap<String, String>> {
     let mut map = vec![];
 

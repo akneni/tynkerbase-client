@@ -1,12 +1,13 @@
 import { invoke } from '@tauri-apps/api/tauri';
 import { useState, useEffect, FormEvent } from 'react';
-import { useParams } from "react-router-dom";
-import { FaExclamationTriangle } from 'react-icons/fa';
+import { useParams, useLocation } from "react-router-dom";
+import { FaExclamationTriangle, FaSync } from 'react-icons/fa';
 
 import NodeMgmtPageStyles from "./styles/NodeMgmtPageStyles.module.css";
 import NodeInfoPageStyles from "./styles/NodeInfoPageStyles.module.css";
 
-import { NodeInfoCard, ContainerCard, ComingSoon, NodeTitleBar } from "../molecules/molecules"
+import { NodeInfoCard, ContainerCard, ComingSoon } from "../molecules/molecules"
+import { Loader } from '../atoms/atoms';
 import { Node, NodeDiags } from "../schemas";
 import { ContainerStats, shorten } from '../utils';
 
@@ -14,22 +15,35 @@ import { ContainerStats, shorten } from '../utils';
 export function NodeMgmtPage() {
     const [nodes, setNodes] = useState<Node[]>(() => []);
     const [render, _setRender] = useState(() => 0);
+    const [fetchedNodes, setFetchedDNodes] = useState(() => false);
 
     useEffect(() => {
         invoke<Node[]>("list_nodes").then(v => {
-            // let r = v;
-            // for (let i = 0; i < 10; i++) { 
-            //     r.push(v[0]);
-            // }
-            console.log("RErendered!! ");
             setNodes(v);
+            setFetchedDNodes(true);
         });
     }, [render]);
 
 
     return (<>
         <div className={NodeMgmtPageStyles.container}>
-            <NodeTitleBar/>
+
+            <div className={NodeMgmtPageStyles.title_container} onClick={() =>window.location.reload()}>
+                {/* <img src="/images/tynkerbase-banner-2.png"/> */}
+                <div className={NodeMgmtPageStyles.title_refresh_container}>
+                    <FaSync className={NodeMgmtPageStyles.title_refresh_icon}/>
+                    <p>Refresh</p>
+                </div>
+            </div>            
+            
+            {!fetchedNodes && <div>
+                <Loader/>
+            </div>}
+
+            {(fetchedNodes && nodes.length == 0) && <div>
+                <p>No Nodes Found</p>
+            </div>}
+
             <div className={NodeMgmtPageStyles.node_cards_container}>
                 {nodes.map(d => (<NodeInfoCard key={d.node_id} node_id={d.node_id} name={d.name} active={d.status == 'active'} addr={d.addr} />))}
             </div>
@@ -51,10 +65,9 @@ export function NodeInfoPage() {
     });
 
     const [containers, setContainers] = useState<ContainerStats[]>(() => []);
-
     const [fetchedData, setFetchedData] = useState(() => false);
-    
     const [active, setActive] = useState(() => false);
+
     let additionalStyles = {color: (active) ? 'green' : 'red'};
     let status = (active) ? 'Active' : 'Inactive';
     
@@ -91,41 +104,64 @@ export function NodeInfoPage() {
         return 'unknown';
     }
 
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+    const node_name = searchParams.get('name');
+
     return (<>
         <div className={NodeInfoPageStyles.container}>
-
             {err && <div className={NodeInfoPageStyles.err_msg}>
                 <p>
                     <FaExclamationTriangle style={{ color: 'black', marginRight: '5px' }} />
                     {err}
                 </p>
             </div>}
+
+
             <div className={NodeInfoPageStyles.header}>
-                <img className={NodeInfoPageStyles.logo} src="/icons/server-icon.svg"/>
-                <div className={NodeInfoPageStyles.header_info_block}>
-                    <p className={NodeInfoPageStyles.text}>
-                        <span className={NodeInfoPageStyles.attribute}>Node Name: </span>{diags.name}
-                    </p>
-                    <p className={NodeInfoPageStyles.text}>
-                        <span className={NodeInfoPageStyles.attribute}>Node ID: </span>{shorten(id, 12)}
-                    </p>
-                    <p className={NodeInfoPageStyles.text}>
-                        <span className={NodeInfoPageStyles.attribute}>Status: </span>
-                        <span className={NodeInfoPageStyles.attribute} style={additionalStyles}>{status}</span>
-                    </p>
+                <div className={NodeInfoPageStyles.logo_block}>
+                    <img className={NodeInfoPageStyles.logo} src="/icons/server-icon.svg"/>
+                    <div className={NodeInfoPageStyles.title}>
+                        <p>{node_name}</p>
+                    </div>
                 </div>
-                {(fetchedData && active) && <div className={NodeInfoPageStyles.header_info_block}>
-                    <p className={NodeInfoPageStyles.text}>
-                        <span className={NodeInfoPageStyles.attribute}>CPU: </span>{diags.cpu}
-                    </p>
-                    <p className={NodeInfoPageStyles.text}>
-                        <span className={NodeInfoPageStyles.attribute}>Cores: </span>{diags.hardware_threads}
-                    </p>
-                    <p className={NodeInfoPageStyles.text}>
-                        <span className={NodeInfoPageStyles.attribute}>RAM: </span>{formatMem(diags.mem_total)}
-                    </p>
-                </div>}
+
+                <div className={NodeInfoPageStyles.header_info_block}>
+                    <div className={NodeInfoPageStyles.header_info_sub_block}>
+
+                        <p className={NodeInfoPageStyles.text}>
+                            <span className={NodeInfoPageStyles.attribute}>Node Name: </span>{diags.name}
+                        </p>
+                        <p className={NodeInfoPageStyles.text}>
+                            <span className={NodeInfoPageStyles.attribute}>Node ID: </span>{shorten(id, 12)}
+                        </p>
+                        <p className={NodeInfoPageStyles.text}>
+                            <span className={NodeInfoPageStyles.attribute}>Status: </span>
+                            <span className={NodeInfoPageStyles.attribute} style={additionalStyles}>{status}</span>
+                        </p>
+                    </div>
+                    {(fetchedData && active) && <div className={NodeInfoPageStyles.header_info_sub_block}>
+                        <p className={NodeInfoPageStyles.text}>
+                            <span className={NodeInfoPageStyles.attribute}>CPU: </span>{diags.cpu}
+                        </p>
+                        <p className={NodeInfoPageStyles.text}>
+                            <span className={NodeInfoPageStyles.attribute}>Cores: </span>{diags.hardware_threads}
+                        </p>
+                        <p className={NodeInfoPageStyles.text}>
+                            <span className={NodeInfoPageStyles.attribute}>RAM: </span>{formatMem(diags.mem_total)}
+                        </p>
+                    </div>}
+                </div>
+
             </div>
+
+            {!fetchedData && <div>
+                <Loader/>
+            </div>}
+
+            {(fetchedData && containers.length == 0) && <div>
+                <p>No Containers Found</p>
+            </div>}
 
             <div className={NodeInfoPageStyles.docker_container_card}>
                 {

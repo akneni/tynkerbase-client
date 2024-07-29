@@ -8,7 +8,6 @@ mod agent_interface;
 mod api_auth_interface;
 mod consts;
 mod global_state;
-mod config;
 mod tauri_cmds;
 
 use tauri;
@@ -22,7 +21,7 @@ use tynkerbase_universal::{
         CompressionType 
     }, 
     file_utils::{self, FileCollection},
-    netwk_utils::Node,
+    netwk_utils::{Node, ProjConfig},
 };
 use consts::PROJ_JSON_CONFIG;
 use std::{
@@ -92,6 +91,7 @@ struct Cli {
 enum TopLevelCmds {
     Gui,
     Login,
+    Logout,
     CreateAccount {
         #[arg(long, short)]
         email: String,
@@ -126,7 +126,10 @@ fn login() -> GlobalState {
             Ok(r) => r,
             Err(e) => {
                 println!("Error logging in: {e}");
-                let _ = fs::remove_file(GlobalState::path());
+                let path = GlobalState::path();
+                if Path::new(&path).exists() {
+                    fs::remove_file(&path).unwrap();
+                }
                 std::process::exit(1);
             }
     };
@@ -134,11 +137,19 @@ fn login() -> GlobalState {
     gstate.email = email;
     gstate.password = pass;
     gstate.tyb_key = key;
-    gstate.save()
-        .unwrap();
+    gstate.save().unwrap();
     gstate
 }
 
+fn handle_gstate(gstate: &Option<GlobalState>) -> GlobalState{
+    match gstate {
+        Some(ref gs) => gs.clone(),
+        None => {
+            println!("Login with `tyb login` first.");
+            process::exit(1);
+        }
+    }
+}
 
 fn main() {
 
@@ -151,26 +162,49 @@ fn main() {
 
     // Load Global State
     let mut gstate = if GlobalState::exists() {
-        GlobalState::load().unwrap()
+        Some(GlobalState::load().unwrap())
     }
     else {
-        let gstate = login();
-        match command {
-            TopLevelCmds::Login => process::exit(0),
-            _ => {},
-        }
-        gstate
+        None
     };
 
-    gstate.populate_nodes().unwrap();
+    if let Some(ref mut gs) = gstate {
+        gs.populate_nodes().unwrap();
+    }
 
 
     match command {
         TopLevelCmds::Gui => {
+            let gstate = handle_gstate(&gstate);
             launch_gui(gstate);
+
         },
         TopLevelCmds::Login => {
-            login();
+            match gstate.as_ref() {
+                Some(gstate) => {
+                    println!("You're already logged in as {}", gstate.email);
+                },
+                None => {
+                    login();
+                    println!("Logged in successfully!");
+                }
+            }
+            process::exit(0);
+        },
+        TopLevelCmds::Logout => {
+            match gstate.as_ref() {
+                Some(_) => {
+                    let path = GlobalState::path();
+                    if Path::new(&path).exists() {
+                        fs::remove_file(path).unwrap();
+                    }
+                    println!("Logged out.");
+                },
+                None => {
+                    println!("You're already logged out!");
+                    process::exit(0);
+                }
+            }
         },
         TopLevelCmds::CreateAccount { email, password } => {
             let f = api_auth_interface::create_account(&email, &password);
@@ -178,9 +212,18 @@ fn main() {
             res.unwrap();
         }
         TopLevelCmds::Deploy => {
+            let gstate = handle_gstate(&gstate);
+
             let conf = fs::read_to_string(PROJ_JSON_CONFIG)
                 .expect("Error, not a valid tynkerbase project");
-            let conf: config::Config = serde_json::from_str(&conf).unwrap();
+            let mut conf: ProjConfig = serde_json::from_str(&conf).unwrap();
+            if !conf.parse_name() {
+                println!("Warning, project name must adhere to docker's naming conventions: \
+                Changing the name to `{}`", &conf.proj_name);
+                let conf_str = serde_json::to_string_pretty(&conf).unwrap();
+                fs::write(PROJ_JSON_CONFIG, conf_str)
+                    .expect("Unable to write to config file.");
+            }
 
             if conf.node_names.len() == 0 {
                 println!("No upstream nodes set. Use `tyb add-upstream` configure an upstream node");
@@ -194,7 +237,7 @@ fn main() {
 
             let mut endpoints = vec![];
 
-            'loop1: for ref n in conf.node_names {
+            'loop1: for n in conf.node_names.iter() {
                 for nl in gstate.nodes.iter() {
                     if n == &nl.name {
                         endpoints.push(nl);
@@ -231,7 +274,7 @@ fn main() {
             }
 
             if endpoints.len() > 0 {
-                println!("Building Images...");
+                println!("Building Images (this may take a while) ...");
             }
             let mut handles = vec![];
             for &e in endpoints.iter() {
@@ -253,7 +296,7 @@ fn main() {
             }
             let mut handles = vec![];
             for &e in endpoints.iter() {
-                let f = agent_interface::spawn_container(&e.addr, &conf.proj_name, &gstate.tyb_key);
+                let f = agent_interface::spawn_container(&e.addr, &conf, &gstate.tyb_key);
                 handles.push((f, e));
             }
 
@@ -283,7 +326,7 @@ fn main() {
                 name = crypt_utils::prompt("Please name this project: ");
             }
 
-            let mut conf = config::Config::default();
+            let mut conf = ProjConfig::default();
             conf.proj_name = name;
             let conf = serde_json::to_string_pretty(&conf)
                 .expect("If you're seeing this error, send out a bug report.");
@@ -292,6 +335,8 @@ fn main() {
                 .unwrap();
         },
         TopLevelCmds::ListNodes => {
+            let gstate = handle_gstate(&gstate);
+
             let mut table = Table::new();
 
             table.set_titles(row!["Name", "Ip Addr", "Status"]);
@@ -312,6 +357,8 @@ fn main() {
             table.printstd();
         }
         TopLevelCmds::ListProjects { mut name } => {
+            let gstate = handle_gstate(&gstate);
+
             let mut node = &gstate.nodes[0];
             if name.len() == 0 {
                 node = prompt_node(&gstate); 
@@ -351,6 +398,8 @@ fn main() {
             }
         }
         TopLevelCmds::AddUpstream { mut name } => {
+            let gstate = handle_gstate(&gstate);
+
             if name.len() == 0 {
                 let node = prompt_node(&gstate);
                 name = node.name.clone();
@@ -358,7 +407,12 @@ fn main() {
 
             let conf = fs::read_to_string(PROJ_JSON_CONFIG)
                 .expect("Error, not a valid tynkerbase project");
-            let mut conf: config::Config = serde_json::from_str(&conf).unwrap();
+            let mut conf: ProjConfig = serde_json::from_str(&conf).unwrap();
+            if !conf.parse_name() {
+                println!("Warning, project name must adhere to docker's naming conventions: \
+                Changing the name to `{}`", &conf.proj_name);
+            }
+
             if conf.node_names.contains(&name) {
                 println!("Node is already set as an upstream target.");
                 process::exit(0);

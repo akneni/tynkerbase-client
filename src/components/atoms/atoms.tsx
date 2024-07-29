@@ -2,8 +2,9 @@ import { useEffect, useRef, MouseEventHandler, useState } from 'react';
 import { useNavigate } from "react-router-dom";
 
 
-import ServerIconStyles from "./styles/IconStyles.module.css";
+import IconStyles from "./styles/IconStyles.module.css";
 import ContextMenuStyles from "./styles/ContextMenuStyles.module.css";
+import LoaderStyles from "./styles/LoaderStyles.module.css";
 
 interface IconProps {
     routerPath: string,
@@ -22,10 +23,10 @@ export function Icon(props: IconProps) {
     }
 
     return (<>
-        <div className={ServerIconStyles.container} style={styles}>
+        <div className={IconStyles.container} style={styles}>
             <img 
                 src={props.iconPath} 
-                className={ServerIconStyles.icon}
+                className={IconStyles.icon}
                 onClick={onClick}
             />
         </div>
@@ -78,4 +79,19 @@ export function ContextMenu({options, isOpen = false, onClose}: ContextMenuProps
             </div>
         </div>
     );
+}
+
+export function Loader() {
+    return (<>
+        <div className={LoaderStyles.dot_spinner}>
+            <div className={LoaderStyles.dot_spinner__dot}></div>
+            <div className={LoaderStyles.dot_spinner__dot}></div>
+            <div className={LoaderStyles.dot_spinner__dot}></div>
+            <div className={LoaderStyles.dot_spinner__dot}></div>
+            <div className={LoaderStyles.dot_spinner__dot}></div>
+            <div className={LoaderStyles.dot_spinner__dot}></div>
+            <div className={LoaderStyles.dot_spinner__dot}></div>
+            <div className={LoaderStyles.dot_spinner__dot}></div>
+        </div>
+    </>)
 }

@@ -107,7 +107,6 @@ pub async fn delete_node(node_id: &str, state: State<'_, Arc<TkMutex<GlobalState
     Ok(())
 }
 
-
 #[tauri::command]
 pub async fn get_diags(node_id: &str, state: State<'_, Arc<TkMutex<GlobalState>>>) -> Result<NodeDiags, InvokeError> {
     let (node, tyb_key) = query_node(node_id, &state).await;

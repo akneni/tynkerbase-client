@@ -1,12 +1,12 @@
 import { useEffect, useState, MouseEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaSync, FaCog } from 'react-icons/fa';
+import { FaCog } from 'react-icons/fa';
+import { Pause, Play, Trash2, Cpu, HardDrive, Network, Clock } from 'lucide-react';
 
 import SidePanelStyles from "./styles/SidePanelStyles.module.css";
 import NodeInfoCardStyles from "./styles/NodeInfoCardStyles.module.css";
 import ContainerCardStyles from "./styles/ContainerCardStyles.module.css"
 import ComingSoonStyles from "./styles/ComingSoonStyles.module.css";
-import NodeTitleBarStyles from "./styles/NodeTitleBarStyles.module.css";
 
 import { shorten } from '../utils';
 import { Icon, ContextMenu } from "../atoms/atoms";
@@ -46,7 +46,7 @@ export function NodeInfoCard(props: NodeInfoCardProps) {
     let status = (props.active) ? 'Active' : 'Inactive';
     const navigate = useNavigate();
     const onClick = () => {
-        navigate(`/node/${props.node_id}`);
+        navigate(`/node/${props.node_id}?name=${props.name}`);
     }
 
     // Handle opening and closing the context menu
@@ -67,7 +67,7 @@ export function NodeInfoCard(props: NodeInfoCardProps) {
                 event.stopPropagation();
                 invoke('delete_node', {'nodeId': props.node_id})
                     .then(() => {
-                        navigate('/nodes');
+                        window.location.reload();
                     })
                     .catch(err => {
                         console.log(err);
@@ -114,32 +114,112 @@ interface ContainerCardProps {
     ports: string;
 }
 export function ContainerCard(props: ContainerCardProps) {
-    return (<>
-        <div className={ContainerCardStyles.container}>
-            <p className={ContainerCardStyles.title}>{props.imgName.substring(0, props.imgName.length - 6)}</p>
-            <div className={ContainerCardStyles.info_box}>
-                <table className={ContainerCardStyles.table_class}>
-                    <thead>
-                        <tr>
-                        <th>CPU</th>
-                        <th>MEM</th>
-                        <th>Status</th>
-                        <th>Ports</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                        <td>{props.cpu_perc}</td>
-                        <td>{props.mem_perc}</td>
-                        <td>{props.status}</td>
-                        <td>{props.ports}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </>);
+	const styles: { [key: string]: React.CSSProperties } = {
+		container: {
+			backgroundColor: '#333333',
+			color: 'white',
+			padding: '15px 20px',
+			borderRadius: '8px',
+			fontFamily: 'Arial, sans-serif',
+			width: '70%',
+		},
+		header: {
+			display: 'flex',
+			justifyContent: 'space-between',
+			alignItems: 'center',
+			marginBottom: '15px',
+		},
+		projectName: {
+			margin: 0,
+			fontSize: '18px',
+			fontWeight: 'bold',
+		},
+		buttonsContainer: {
+			display: 'flex',
+			gap: '10px',
+		},
+		iconButton: {
+			background: 'none',
+			border: 'none',
+			cursor: 'pointer',
+			padding: '5px',
+			borderRadius: '4px',
+			display: 'flex',
+			alignItems: 'center',
+			justifyContent: 'center',
+		},
+		statsContainer: {
+			display: 'flex',
+			justifyContent: 'space-between',
+		},
+		statItem: {
+			display: 'flex',
+			alignItems: 'center',
+			gap: '10px',
+		},
+		statValue: {
+			display: 'flex',
+			flexDirection: 'column',
+		},
+		statLabel: {
+			fontSize: '12px',
+			color: '#aaaaaa',
+		},
+		statNumber: {
+			fontSize: '14px',
+		},
+	};
+
+	return (
+		<div style={styles.container}>
+			<div style={styles.header}>
+				<h2 style={styles.projectName}>{props.imgName.replace('__tyb_image', '')}</h2>
+				<div style={styles.buttonsContainer}>
+					<button style={{ ...styles.iconButton, color: 'yellow' }}>
+						<Pause size={20} />
+					</button>
+					<button style={{ ...styles.iconButton, color: 'green' }}>
+						<Play size={20} />
+					</button>
+					<button style={{ ...styles.iconButton, color: 'red' }}>
+						<Trash2 size={20} />
+					</button>
+				</div>
+			</div>
+			<div style={styles.statsContainer}>
+				<div style={styles.statItem}>
+					<Cpu size={20} />
+					<div style={styles.statValue}>
+						<span style={styles.statLabel}>CPU Usage</span>
+						<span style={styles.statNumber}>{props.cpu_perc}</span>
+					</div>
+				</div>
+				<div style={styles.statItem}>
+					<HardDrive size={20} />
+					<div style={styles.statValue}>
+						<span style={styles.statLabel}>Memory Usage</span>
+						<span style={styles.statNumber}>{props.mem_perc}</span>
+					</div>
+				</div>
+				<div style={styles.statItem}>
+					<Network size={20} />
+					<div style={styles.statValue}>
+						<span style={styles.statLabel}>Ports Exposed</span>
+						<span style={styles.statNumber}>{props.ports}</span>
+					</div>
+				</div>
+				<div style={styles.statItem}>
+					<Clock size={20} />
+					<div style={styles.statValue}>
+						<span style={styles.statLabel}>Status</span>
+						<span style={styles.statNumber}>{props.status}</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
 }
+  
 
 interface ComingSoonProps {
     message: string[],
@@ -172,15 +252,3 @@ export function InitialRouter() {
     return (<></>)
 }
 
-export function NodeTitleBar() {
-    return (<>
-        <div className={NodeTitleBarStyles.container}>
-            <img src="/images/tynkerbase-banner-2.png"/>
-            {/* <p>sd</p> */}
-            <div>
-                <FaSync/>
-                <p>Refresh</p>
-            </div>
-        </div>
-    </>)
-}
