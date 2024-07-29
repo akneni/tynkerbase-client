@@ -114,105 +114,49 @@ interface ContainerCardProps {
     ports: string;
 }
 export function ContainerCard(props: ContainerCardProps) {
-	const styles: { [key: string]: React.CSSProperties } = {
-		container: {
-			backgroundColor: '#333333',
-			color: 'white',
-			padding: '15px 20px',
-			borderRadius: '8px',
-			fontFamily: 'Arial, sans-serif',
-			width: '70%',
-		},
-		header: {
-			display: 'flex',
-			justifyContent: 'space-between',
-			alignItems: 'center',
-			marginBottom: '15px',
-		},
-		projectName: {
-			margin: 0,
-			fontSize: '18px',
-			fontWeight: 'bold',
-		},
-		buttonsContainer: {
-			display: 'flex',
-			gap: '10px',
-		},
-		iconButton: {
-			background: 'none',
-			border: 'none',
-			cursor: 'pointer',
-			padding: '5px',
-			borderRadius: '4px',
-			display: 'flex',
-			alignItems: 'center',
-			justifyContent: 'center',
-		},
-		statsContainer: {
-			display: 'flex',
-			justifyContent: 'space-between',
-		},
-		statItem: {
-			display: 'flex',
-			alignItems: 'center',
-			gap: '10px',
-		},
-		statValue: {
-			display: 'flex',
-			flexDirection: 'column',
-		},
-		statLabel: {
-			fontSize: '12px',
-			color: '#aaaaaa',
-		},
-		statNumber: {
-			fontSize: '14px',
-		},
-	};
-
 	return (
-		<div style={styles.container}>
-			<div style={styles.header}>
-				<h2 style={styles.projectName}>{props.imgName.replace('__tyb_image', '')}</h2>
-				<div style={styles.buttonsContainer}>
-					<button style={{ ...styles.iconButton, color: 'yellow' }}>
+		<div className={ContainerCardStyles.container}>
+			<div className={ContainerCardStyles.header}>
+				<h2 className={ContainerCardStyles.projectName}>{props.imgName.replace('__tyb_image', '')}</h2>
+				<div className={ContainerCardStyles.buttonsContainer}>
+					<button className={ContainerCardStyles.iconButton} style={{ color: 'yellow' }}>
 						<Pause size={20} />
 					</button>
-					<button style={{ ...styles.iconButton, color: 'green' }}>
+					<button className={ContainerCardStyles.iconButton} style={{ color: 'green' }}>
 						<Play size={20} />
 					</button>
-					<button style={{ ...styles.iconButton, color: 'red' }}>
+					<button  className={ContainerCardStyles.iconButton}style={{ color: 'red' }}>
 						<Trash2 size={20} />
 					</button>
 				</div>
 			</div>
-			<div style={styles.statsContainer}>
-				<div style={styles.statItem}>
+			<div className={ContainerCardStyles.statsContainer}>
+				<div className={ContainerCardStyles.statItem}>
 					<Cpu size={20} />
-					<div style={styles.statValue}>
-						<span style={styles.statLabel}>CPU Usage</span>
-						<span style={styles.statNumber}>{props.cpu_perc}</span>
+					<div className={ContainerCardStyles.statValue}>
+						<span className={ContainerCardStyles.statLabel}>CPU Usage</span>
+						<span className={ContainerCardStyles.statNumber}>{props.cpu_perc}</span>
 					</div>
 				</div>
-				<div style={styles.statItem}>
+				<div className={ContainerCardStyles.statItem}>
 					<HardDrive size={20} />
-					<div style={styles.statValue}>
-						<span style={styles.statLabel}>Memory Usage</span>
-						<span style={styles.statNumber}>{props.mem_perc}</span>
+					<div className={ContainerCardStyles.statValue}>
+						<span className={ContainerCardStyles.statLabel}>Memory Usage</span>
+						<span className={ContainerCardStyles.statNumber}>{props.mem_perc}</span>
 					</div>
 				</div>
-				<div style={styles.statItem}>
+				<div className={ContainerCardStyles.statItem}>
 					<Network size={20} />
-					<div style={styles.statValue}>
-						<span style={styles.statLabel}>Ports Exposed</span>
-						<span style={styles.statNumber}>{props.ports}</span>
+					<div className={ContainerCardStyles.statValue}>
+						<span className={ContainerCardStyles.statLabel}>Ports Exposed</span>
+						<span className={ContainerCardStyles.statNumber}>{props.ports}</span>
 					</div>
 				</div>
-				<div style={styles.statItem}>
+				<div className={ContainerCardStyles.statItem}>
 					<Clock size={20} />
-					<div style={styles.statValue}>
-						<span style={styles.statLabel}>Status</span>
-						<span style={styles.statNumber}>{props.status}</span>
+					<div className={ContainerCardStyles.statValue}>
+						<span className={ContainerCardStyles.statLabel}>Status</span>
+						<span className={ContainerCardStyles.statNumber}>{props.status}</span>
 					</div>
 				</div>
 			</div>
