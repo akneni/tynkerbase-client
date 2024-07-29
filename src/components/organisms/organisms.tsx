@@ -75,7 +75,6 @@ export function NodeInfoPage() {
         invoke<NodeDiags>('get_diags', {nodeId: id})
         .then(diags => {
             setDiags(diags)
-            setFetchedData(true);
         })
         .catch(e => {
             setErr(`Error getting node diagnostics: ${e}`)
@@ -92,6 +91,7 @@ export function NodeInfoPage() {
         invoke<ContainerStats[]>('get_container_stats', {nodeId: id}).then(res => {
             console.log(res);
             setContainers(res);
+            setFetchedData(true);
         })
     }, [id])
 
