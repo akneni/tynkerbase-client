@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/tauri';
 import { useState, useEffect, FormEvent } from 'react';
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { FaExclamationTriangle, FaSync } from 'react-icons/fa';
 
 import NodeMgmtPageStyles from "./styles/NodeMgmtPageStyles.module.css";
@@ -195,17 +195,18 @@ export function DataviewPage() {
 }
 
 export function LoginPage() {
-    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
+    const navigate = useNavigate();
   
     const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
         e.preventDefault();
         invoke('create_account', {'email': email, 'password': password})
-            .then(r => {
-                
+            .then(_r => {
+                navigate("/nodes");
             })
-            .catch(err => {
+            .catch(_err => {
 
             });
     };
