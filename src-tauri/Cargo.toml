@@ -26,6 +26,7 @@ hex = "0.4.3"
 rpassword = "7.3.1"
 prettytable-rs = "0.10.0"
 dirs = "5.0.1"
+ansi_term = "0.12.1"
 
 
 [features]
